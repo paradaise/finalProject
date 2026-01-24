@@ -69,9 +69,11 @@ app_state = AppState()
 
 # Инициализация БД
 def init_database():
+    """Инициализация базы данных"""
     conn = sqlite3.connect("sound_sentinel.db")
     cursor = conn.cursor()
 
+    # Таблица устройств
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS devices (
@@ -79,27 +81,32 @@ def init_database():
             name TEXT,
             ip_address TEXT,
             status TEXT,
-            last_seen TIMESTAMP,
+            last_seen TEXT,
             temperature REAL,
-            cpu_load REAL
+            cpu_load REAL,
+            wifi_ssid TEXT
         )
     """
     )
 
+    # Таблица аудио событий
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS audio_events (
             id TEXT PRIMARY KEY,
             sound_type TEXT,
             confidence REAL,
-            timestamp TIMESTAMP,
+            timestamp TEXT,
             device_id TEXT,
             intensity REAL,
-            description TEXT
+            db_level REAL,
+            description TEXT,
+            FOREIGN KEY (device_id) REFERENCES devices (id)
         )
     """
     )
 
+    # Таблица пользовательских звуков
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS custom_sounds (
@@ -107,8 +114,9 @@ def init_database():
             name TEXT,
             sound_type TEXT,
             mfcc_features TEXT,
-            created_at TIMESTAMP,
-            device_id TEXT
+            created_at TEXT,
+            device_id TEXT,
+            FOREIGN KEY (device_id) REFERENCES devices (id)
         )
     """
     )
@@ -383,10 +391,14 @@ async def process_audio_packet(packet: AudioPacket):
 
                 # Сохранение в БД
                 cursor = app_state.db_conn.cursor()
+
+                # Вычисление уровня в дБ
+                db_level = 20 * np.log10(np.max(np.abs(full_audio)) + 1e-10)
+
                 cursor.execute(
                     """
-                    INSERT INTO audio_events (id, sound_type, confidence, timestamp, device_id, intensity, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO audio_events (id, sound_type, confidence, timestamp, device_id, intensity, db_level, description)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         event.id,
@@ -395,13 +407,26 @@ async def process_audio_packet(packet: AudioPacket):
                         event.timestamp,
                         event.device_id,
                         event.intensity,
+                        db_level,
                         event.description,
                     ),
                 )
                 app_state.db_conn.commit()
 
-                # Отправка в WebSocket
-                await broadcast_audio_event(event.dict())
+                # Отправка в WebSocket с реальными данными
+                websocket_data = {
+                    **event.dict(),
+                    "db_level": db_level,
+                    "audio_waveform": full_audio[
+                        :100
+                    ].tolist(),  # Первые 100 сэмплов для визуализации
+                    "device_stats": {
+                        "temperature": device.get("temperature"),
+                        "cpu_load": device.get("cpu_load"),
+                        "wifi_ssid": device.get("wifi_ssid"),
+                    },
+                }
+                await broadcast_audio_event(websocket_data)
 
             # Очистка буфера
             del app_state.audio_buffers[device_id][segment_id]
@@ -526,8 +551,8 @@ async def register_device(device: dict):
         cursor = app_state.db_conn.cursor()
         cursor.execute(
             """
-            INSERT OR REPLACE INTO devices (id, name, ip_address, status, last_seen, temperature, cpu_load)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO devices (id, name, ip_address, status, last_seen, temperature, cpu_load, wifi_ssid)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 device_id,
@@ -537,6 +562,7 @@ async def register_device(device: dict):
                 datetime.now(),
                 device.get("temperature"),
                 device.get("cpu_load"),
+                device.get("wifi_ssid"),
             ),
         )
         app_state.db_conn.commit()

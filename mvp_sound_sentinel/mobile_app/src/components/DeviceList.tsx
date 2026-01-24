@@ -1,0 +1,145 @@
+import React from 'react';
+import { Wifi, WifiOff, Settings, Volume2 } from 'lucide-react';
+import { Device } from '../api/client';
+
+interface Props {
+  devices: Device[];
+  detections: { [key: string]: any[] };
+  onSelectDevice: (deviceId: string) => void;
+  onCustomSounds: () => void;
+}
+
+export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds }: Props) {
+  const getStatusIcon = (status: string) => {
+    return status === 'online' ? (
+      <Wifi className="w-5 h-5 text-green-500" />
+    ) : (
+      <WifiOff className="w-5 h-5 text-gray-400" />
+    );
+  };
+
+  const getStatusColor = (status: string) => {
+    return status === 'online' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50';
+  };
+
+  const formatLastSeen = (lastSeen: string) => {
+    try {
+      const date = new Date(lastSeen);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) return 'Только что';
+      if (diffMins < 60) return `${diffMins} мин назад`;
+      if (diffMins < 1440) return `${Math.floor(diffMins / 60)} ч назад`;
+      return date.toLocaleDateString();
+    } catch {
+      return 'Неизвестно';
+    }
+  };
+
+  const getLatestDetection = (deviceId: string) => {
+    const deviceDetections = detections[deviceId] || [];
+    return deviceDetections[0]; // Самая последняя детекция
+  };
+
+  const onlineCount = devices.filter(d => d.status === 'online').length;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Sound Sentinel</h1>
+              <p className="text-sm text-gray-600">Мониторинг звуков в реальном времени</p>
+            </div>
+            <button
+              onClick={onCustomSounds}
+              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Устройств онлайн</p>
+              <p className="text-3xl font-bold text-gray-900">{onlineCount}/{devices.length}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Всего детекций</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {Object.values(detections).reduce((sum, dets) => sum + dets.length, 0)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Devices List */}
+        <div className="space-y-4">
+          {devices.length === 0 ? (
+            <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+              <Volume2 className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">Нет устройств</h3>
+              <p className="text-gray-500">Подключите Raspberry Pi для начала мониторинга</p>
+            </div>
+          ) : (
+            devices.map((device) => {
+              const latestDetection = getLatestDetection(device.id);
+              return (
+                <div
+                  key={device.id}
+                  className={`bg-white rounded-xl p-6 shadow-sm border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(device.status)}`}
+                  onClick={() => onSelectDevice(device.id)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {getStatusIcon(device.status)}
+                        <h3 className="text-lg font-semibold text-gray-900">{device.name}</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600">IP адрес</p>
+                          <p className="font-medium">{device.ip_address}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Последняя активность</p>
+                          <p className="font-medium">{formatLastSeen(device.last_seen)}</p>
+                        </div>
+                      </div>
+
+                      {latestDetection && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-blue-900">
+                                Последний звук: {latestDetection.sound_type}
+                              </p>
+                              <p className="text-xs text-blue-700">
+                                Уверенность: {(latestDetection.confidence * 100).toFixed(1)}%
+                              </p>
+                            </div>
+                            <Volume2 className="w-5 h-5 text-blue-600" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

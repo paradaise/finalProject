@@ -1,18 +1,18 @@
 import { ArrowLeft, Plus, Zap } from 'lucide-react';
 import { useState } from 'react';
-import { SpecificSound } from '../App';
+import { SpecificSound } from '../api/client';
 import { SoundItem } from './SoundItem';
 import { RecordSpecificSoundModal } from './RecordSpecificSoundModal';
 
 type Props = {
-  specificSounds: SpecificSound[];
+  sounds: SpecificSound[];
   onBack: () => void;
   onAddSound: (sound: Omit<SpecificSound, 'id'>) => void;
   onDeleteSound: (soundId: string) => void;
 };
 
 export function SpecificSoundsScreen({ 
-  specificSounds, 
+  sounds, 
   onBack, 
   onAddSound,
   onDeleteSound 
@@ -26,110 +26,96 @@ export function SpecificSoundsScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-50 to-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="flex-1">
-              <h1 className="text-gray-900">Specific Sounds</h1>
-            </div>
+            <h1 className="text-xl font-semibold">Specific Sounds</h1>
           </div>
-          <p className="text-gray-600 ml-13">
-            Important sounds the system should track
-          </p>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Info Card */}
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-          <div className="flex gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-red-600" />
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Zap className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-red-900 mb-1">Priority Tracking</p>
-              <p className="text-red-700 text-sm">
-                Record specific sounds you want to be notified about, like alarms, baby cries, or doorbells.
+              <p className="text-green-900 mb-1">How It Works</p>
+              <p className="text-green-700 text-sm">
+                Record important sounds you want to be notified about immediately. These sounds will trigger instant alerts.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Priority Filter */}
-        {specificSounds.length > 0 && (
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-            <button className="px-4 py-2 bg-white border-2 border-blue-500 text-blue-700 rounded-xl text-sm whitespace-nowrap">
-              All ({specificSounds.length})
-            </button>
-            <button className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm whitespace-nowrap hover:border-gray-300">
-              High Priority ({specificSounds.filter(s => s.priority === 'high').length})
-            </button>
-            <button className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm whitespace-nowrap hover:border-gray-300">
-              Medium ({specificSounds.filter(s => s.priority === 'medium').length})
-            </button>
+        {/* Priority Stats */}
+        {sounds.length > 0 && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            {(['high', 'medium', 'low'] as const).map((priority) => (
+              <div key={priority} className="bg-white rounded-lg p-4 text-center">
+                <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${priorityBadges[priority]}`}>
+                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </div>
+                <p className="text-2xl font-bold mt-2">
+                  {sounds.filter((s) => s.priority === priority).length}
+                </p>
+              </div>
+            ))}
           </div>
         )}
 
         {/* Specific Sounds List */}
-        {specificSounds.length > 0 ? (
-          <div className="space-y-3 mb-6">
-            {specificSounds.map((sound) => (
-              <div key={sound.id} className="relative">
-                <SoundItem
-                  sound={sound}
-                  onDelete={() => onDeleteSound(sound.id)}
-                  color="red"
-                />
-                <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs ${priorityBadges[sound.priority]}`}>
-                  {sound.priority}
-                </div>
-              </div>
-            ))}
+        {sounds.length === 0 ? (
+          <div className="text-center py-12">
+            <Zap className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-600 mb-2">No specific sounds</h3>
+            <p className="text-gray-500 mb-6">Important sounds you want to track will appear here</p>
+            <button
+              onClick={() => setShowRecordModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Add First Sound
+            </button>
           </div>
         ) : (
-          <div className="text-center py-16 mb-6">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-10 h-10 text-red-400" />
-            </div>
-            <p className="text-gray-900 mb-2">No specific sounds yet</p>
-            <p className="text-gray-600 text-sm px-8">
-              Add sounds that you want to track and be notified about
-            </p>
+          <div className="space-y-3">
+            {sounds.map((sound) => (
+              <SoundItem
+                key={sound.id}
+                sound={sound}
+                onDelete={() => onDeleteSound(sound.id)}
+                color="green"
+                badge={priorityBadges[sound.priority]}
+              />
+            ))}
           </div>
         )}
 
         {/* Add Sound Button */}
         <button
           onClick={() => setShowRecordModal(true)}
-          className="w-full bg-red-600 text-white py-4 rounded-xl flex items-center justify-center gap-2 active:bg-red-700 transition-colors shadow-sm"
+          className="w-full bg-green-600 text-white py-4 rounded-xl flex items-center justify-center gap-2 active:bg-green-700 transition-colors shadow-sm"
         >
           <Plus className="w-5 h-5" />
           Add Specific Sound
         </button>
       </div>
 
-      {/* Record Sound Modal */}
+      {/* Record Modal */}
       {showRecordModal && (
         <RecordSpecificSoundModal
           onClose={() => setShowRecordModal(false)}
-          onSave={(name, icon, priority, duration) => {
-            onAddSound({
-              name,
-              icon,
-              priority,
-              recordedAt: new Date(),
-              duration,
-            });
-            setShowRecordModal(false);
-          }}
+          onAddSound={onAddSound}
         />
       )}
     </div>

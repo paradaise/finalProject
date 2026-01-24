@@ -1,5 +1,5 @@
 import { Cpu, Thermometer, Wifi, WifiOff, AlertTriangle, Trash2 } from 'lucide-react';
-import { Device } from '../App';
+import { Device } from '../api/client';
 import { useState } from 'react';
 
 type Props = {
@@ -39,16 +39,17 @@ export function DeviceCard({ device, isSelected, onSelect, onDelete }: Props) {
   const config = statusConfig[device.status];
   const StatusIcon = config.icon;
 
-  const formatLastSeen = (date: Date) => {
+  const formatLastSeen = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - dateObj.getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    return dateObj.toLocaleDateString();
   };
 
   return (
@@ -84,7 +85,7 @@ export function DeviceCard({ device, isSelected, onSelect, onDelete }: Props) {
             <div className={`w-2 h-2 rounded-full ${config.color}`} />
             <span className={`text-sm ${config.textColor}`}>{config.text}</span>
             {device.status !== 'offline' && (
-              <span className="text-gray-500 text-sm">· {formatLastSeen(device.lastSeen)}</span>
+              <span className="text-gray-500 text-sm">· {formatLastSeen(device.last_seen)}</span>
             )}
           </div>
 
@@ -92,15 +93,15 @@ export function DeviceCard({ device, isSelected, onSelect, onDelete }: Props) {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <StatusIcon className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-gray-600 text-sm">{device.ipAddress}</span>
+              <span className="text-gray-600 text-sm">{device.ip_address}</span>
             </div>
             <div className="text-gray-500 text-sm font-mono">
-              {device.macAddress}
+              {device.id}
             </div>
           </div>
 
           {/* Health Indicators */}
-          {device.status === 'online' && device.temperature && device.cpuLoad && (
+          {device.status === 'online' && device.temperature && device.cpu_load && (
             <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-1.5">
                 <Thermometer className="w-4 h-4 text-orange-500" />
@@ -108,7 +109,7 @@ export function DeviceCard({ device, isSelected, onSelect, onDelete }: Props) {
               </div>
               <div className="flex items-center gap-1.5">
                 <Cpu className="w-4 h-4 text-blue-500" />
-                <span className="text-sm text-gray-700">{device.cpuLoad}%</span>
+                <span className="text-sm text-gray-700">{device.cpu_load}%</span>
               </div>
             </div>
           )}

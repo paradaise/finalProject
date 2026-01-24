@@ -18,6 +18,7 @@ export interface AudioEvent {
   timestamp: string;
   device_id: string;
   intensity: number;
+  db_level?: number;
   description: string;
 }
 
@@ -186,17 +187,15 @@ class ApiClient {
   }
 
   // WebSocket для реального времени
-  connectWebSocket(onMessage: (data: AudioEvent) => void): void {
+  connectWebSocket(onMessage: (data: any) => void): WebSocket {
     try {
-      this.wsConnection = new WebSocket(
-        `${this.baseUrl.replace("http", "ws")}/ws`,
-      );
-
-      this.wsConnection.onopen = () => {
+      const ws = new WebSocket(`${this.baseUrl.replace('http', 'ws')}/ws`);
+      
+      ws.onopen = () => {
         console.log("WebSocket connected");
       };
 
-      this.wsConnection.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           onMessage(data);
@@ -205,7 +204,7 @@ class ApiClient {
         }
       };
 
-      this.wsConnection.onclose = () => {
+      ws.onclose = () => {
         console.log("WebSocket disconnected");
         // Автоматическое переподключение через 5 секунд
         setTimeout(() => {
@@ -213,11 +212,14 @@ class ApiClient {
         }, 5000);
       };
 
-      this.wsConnection.onerror = (error) => {
+      ws.onerror = (error) => {
         console.error("WebSocket error:", error);
       };
+      
+      return ws;
     } catch (error) {
       console.error("Error connecting WebSocket:", error);
+      throw error;
     }
   }
 

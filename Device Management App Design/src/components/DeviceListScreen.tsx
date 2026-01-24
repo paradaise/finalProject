@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Device } from '../App';
+import { Device } from '../api/client';
 import { DeviceCard } from './DeviceCard';
 import { AddDeviceModal } from './AddDeviceModal';
 
@@ -10,6 +10,9 @@ type Props = {
   onSelectDevice: (deviceId: string) => void;
   onAddDevice: (device: Omit<Device, 'id'>) => void;
   onDeleteDevice: (deviceId: string) => void;
+  audioEvents?: { [deviceId: string]: any[] };
+  onNavigateToExcluded?: () => void;
+  onNavigateToSpecific?: () => void;
 };
 
 export function DeviceListScreen({ 
@@ -17,7 +20,10 @@ export function DeviceListScreen({
   selectedDeviceId, 
   onSelectDevice, 
   onAddDevice,
-  onDeleteDevice 
+  onDeleteDevice,
+  audioEvents,
+  onNavigateToExcluded,
+  onNavigateToSpecific
 }: Props) {
   const [showAddModal, setShowAddModal] = useState(false);
 
