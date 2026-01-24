@@ -518,6 +518,88 @@ async def add_custom_sound(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/devices")
+async def register_device(device: dict):
+    """Регистрация нового устройства"""
+    try:
+        device_id = device.get("id", str(uuid.uuid4()))
+        cursor = app_state.db_conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO devices (id, name, ip_address, status, last_seen, temperature, cpu_load)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+            (
+                device_id,
+                device.get("name"),
+                device.get("ip_address"),
+                device.get("status", "online"),
+                datetime.now(),
+                device.get("temperature"),
+                device.get("cpu_load"),
+            ),
+        )
+        app_state.db_conn.commit()
+        return {"id": device_id, "status": "registered"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/custom_sounds")
+async def get_custom_sounds(device_id: Optional[str] = None):
+    """Получение пользовательских звуков"""
+    try:
+        cursor = app_state.db_conn.cursor()
+        if device_id:
+            cursor.execute(
+                "SELECT * FROM custom_sounds WHERE device_id = ?", (device_id,)
+            )
+        else:
+            cursor.execute("SELECT * FROM custom_sounds")
+        rows = cursor.fetchall()
+
+        sounds = []
+        for row in rows:
+            sounds.append(
+                {
+                    "id": row[0],
+                    "name": row[1],
+                    "sound_type": row[2],
+                    "mfcc_features": json.loads(row[3]),
+                    "created_at": row[4],
+                    "device_id": row[5],
+                }
+            )
+        return sounds
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/devices/{device_id}")
+async def delete_device(device_id: str):
+    """Удаление устройства"""
+    try:
+        cursor = app_state.db_conn.cursor()
+        cursor.execute("DELETE FROM devices WHERE id = ?", (device_id,))
+        cursor.execute("DELETE FROM audio_events WHERE device_id = ?", (device_id,))
+        app_state.db_conn.commit()
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/custom_sounds/{sound_id}")
+async def delete_custom_sound(sound_id: str):
+    """Удаление пользовательского звука"""
+    try:
+        cursor = app_state.db_conn.cursor()
+        cursor.execute("DELETE FROM custom_sounds WHERE id = ?", (sound_id,))
+        app_state.db_conn.commit()
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
 
