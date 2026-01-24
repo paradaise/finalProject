@@ -1,9 +1,10 @@
 # send_voice_fixed.py
 import pyaudio
-import socket
+import requests
 import time
 import json
 import numpy as np
+import uuid
 
 # Настройки
 CHUNK = 1024
@@ -13,17 +14,48 @@ RATE = 44100
 SEGMENT_DURATION = 2  # секунды
 SAMPLES_PER_SEGMENT = RATE * SEGMENT_DURATION
 
-PC_IP = "192.168.0.61"
-PC_PORT = 5228
+# API настройки
+API_BASE_URL = "http://192.168.0.61:8000"
+DEVICE_ID = str(uuid.uuid4())  # Уникальный ID устройства
+DEVICE_NAME = "Living Room Monitor"
 
 
 class AudioSender:
     def __init__(self):
         self.audio = pyaudio.PyAudio()
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.setsockopt(
-            socket.SOL_SOCKET, socket.SO_SNDBUF, 8192
-        )  # Уменьшаем буфер
+        self.device_id = DEVICE_ID
+        self.device_name = DEVICE_NAME
+        self.segment_count = 0
+
+        # Регистрация устройства
+        self.register_device()
+
+    def register_device(self):
+        """Регистрация устройства в API"""
+        try:
+            device_data = {
+                "id": self.device_id,
+                "name": self.device_name,
+                "ip_address": self.get_local_ip(),
+                "status": "online",
+            }
+            response = requests.post(f"{API_BASE_URL}/devices", json=device_data)
+            print(f"Устройство зарегистрировано: {self.device_id}")
+        except Exception as e:
+            print(f"Ошибка регистрации устройства: {e}")
+
+    def get_local_ip(self):
+        """Получение локального IP адреса"""
+        import socket
+
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
 
     def start_stream(self):
         print("Запуск аудио потока...")
@@ -48,8 +80,7 @@ class AudioSender:
         return audio_array[indices]
 
     def capture_and_send(self):
-        print(f"Отправка на {PC_IP}:{PC_PORT}")
-        segment_count = 0
+        print(f"Отправка на API сервер: {API_BASE_URL}")
 
         while True:
             try:
@@ -77,7 +108,7 @@ class AudioSender:
                 num_packets = len(audio_float) // packet_size
 
                 print(
-                    f"Сегмент {segment_count}: {len(audio_float)} samples -> {num_packets} пакетов"
+                    f"Сегмент {self.segment_count}: {len(audio_float)} samples -> {num_packets} пакетов"
                 )
 
                 for i in range(num_packets):
@@ -87,28 +118,38 @@ class AudioSender:
 
                     # Создаем пакет
                     packet = {
-                        "segment_id": segment_count,
+                        "segment_id": self.segment_count,
                         "packet_id": i,
                         "total_packets": num_packets,
                         "audio": packet_audio.tolist(),
                         "sample_rate": 16000,
                         "timestamp": time.time(),
+                        "device_id": self.device_id,
                     }
 
-                    # Отправляем пакет
-                    json_data = json.dumps(packet).encode("utf-8")
-
-                    # Проверяем размер пакета
-                    if len(json_data) > 1400:  # MTU размер
-                        print(f"Предупреждение: пакет большой {len(json_data)} байт")
-
-                    self.socket.sendto(json_data, (PC_IP, PC_PORT))
+                    # Отправляем через HTTP API
+                    try:
+                        response = requests.post(
+                            f"{API_BASE_URL}/audio_packet", json=packet, timeout=1.0
+                        )
+                        if response.status_code == 200:
+                            result = response.json()
+                            if result.get("status") == "processed":
+                                print(f"✅ Сегмент {self.segment_count} обработан")
+                                detections = result.get("detections", [])
+                                for detection in detections:
+                                    print(
+                                        f"   🔊 {detection['sound']}: {detection['confidence']:.1%}"
+                                    )
+                        else:
+                            print(f"Ошибка API: {response.status_code}")
+                    except requests.exceptions.RequestException as e:
+                        print(f"Ошибка отправки пакета: {e}")
 
                     # Небольшая задержка между пакетами
                     time.sleep(0.001)
 
-                print(f"✅ Сегмент {segment_count} отправлен")
-                segment_count += 1
+                self.segment_count += 1
 
             except Exception as e:
                 print(f"Ошибка: {e}")
