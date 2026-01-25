@@ -21,7 +21,7 @@ DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_DURATION = 5  # секунды на один чанк (увеличил для реже отправки)
+CHUNK_DURATION = 3  # секунды на один чанк (увеличил для реже отправки)
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
 
 
@@ -290,7 +290,6 @@ class AudioClient:
             self.audio = pyaudio.PyAudio()
 
             print("🎤 Доступные аудио устройства:")
-            supported_devices = []
             for i in range(self.audio.get_device_count()):
                 info = self.audio.get_device_info_by_index(i)
                 if info["maxInputChannels"] > 0:
@@ -298,76 +297,7 @@ class AudioClient:
                         f"  [{i}] {info['name']} (каналов: {info['maxInputChannels']})"
                     )
 
-                    # Проверяем поддерживаемые частоты дискретизации
-                    try:
-                        test_stream = self.audio.open(
-                            format=FORMAT,
-                            channels=CHANNELS,
-                            rate=SAMPLE_RATE,
-                            input=True,
-                            input_device_index=i,
-                            frames_per_buffer=1024,
-                        )
-                        test_stream.close()
-                        supported_devices.append(i)
-                        print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
-                    except:
-                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz")
-
-            if not supported_devices:
-                print("❌ Ни одно устройство не поддерживает 16000 Hz!")
-                print("🔄 Пробуем стандартную частоту 44100 Hz...")
-                return self.init_audio_fallback()
-
-            # Пробуем устройства в порядке приоритета
-            priority_devices = []
-
-            # Сначала пробуем pulse (обычно работает лучше)
-            for i in supported_devices:
-                info = self.audio.get_device_info_by_index(i)
-                if "pulse" in info["name"].lower():
-                    priority_devices.insert(0, i)
-                else:
-                    priority_devices.append(i)
-
-            for device_index in priority_devices:
-                try:
-                    device_info = self.audio.get_device_info_by_index(device_index)
-                    print(f"🎤 Пробую устройство: {device_info['name']}")
-
-                    self.stream = self.audio.open(
-                        format=FORMAT,
-                        channels=CHANNELS,
-                        rate=SAMPLE_RATE,
-                        input=True,
-                        input_device_index=device_index,
-                        frames_per_buffer=CHUNK_SIZE,
-                    )
-
-                    print(f"✅ Аудио поток инициализирован с {device_info['name']}")
-                    return True
-
-                except Exception as e:
-                    print(f"❌ Устройство {device_info['name']} недоступно: {e}")
-                    continue
-
-            print("❌ Все устройства недоступны!")
-            print("🔄 Пробуем запасной вариант...")
-            return self.init_audio_fallback()
-
-        except Exception as e:
-            print(f"❌ Ошибка инициализации аудио: {e}")
-            print("🔄 Пробуем запасной вариант...")
-            return self.init_audio_fallback()
-
-    def init_audio_fallback(self):
-        """Запасной вариант инициализации аудио"""
-        try:
-            # Пробуем с частотой 44100 Hz и последующим ресемплингом
-            fallback_sample_rate = 44100
-
-            print(f"🔄 Пробую инициализировать с {fallback_sample_rate} Hz...")
-
+            # Ищем устройство по умолчанию или первое доступное
             device_index = None
             for i in range(self.audio.get_device_count()):
                 info = self.audio.get_device_info_by_index(i)
@@ -376,7 +306,7 @@ class AudioClient:
                     break
 
             if device_index is None:
-                print("❌ Не найдено аудио устройств!")
+                print("❌ Не найдено аудио устройств с поддержкой записи!")
                 return False
 
             device_info = self.audio.get_device_info_by_index(device_index)
@@ -385,43 +315,18 @@ class AudioClient:
             self.stream = self.audio.open(
                 format=FORMAT,
                 channels=CHANNELS,
-                rate=fallback_sample_rate,
+                rate=SAMPLE_RATE,
                 input=True,
                 input_device_index=device_index,
-                frames_per_buffer=int(fallback_sample_rate * CHUNK_DURATION),
+                frames_per_buffer=CHUNK_SIZE,
             )
 
-            self.fallback_sample_rate = fallback_sample_rate
-            print(f"✅ Аудио поток инициализирован с {fallback_sample_rate} Hz")
+            print("✅ Аудио поток инициализирован")
             return True
 
         except Exception as e:
-            print(f"❌ Ошибка запасной инициализации аудио: {e}")
+            print(f"❌ Ошибка инициализации аудио: {e}")
             return False
-
-    def resample_audio(self, audio_data, original_rate, target_rate):
-        """Ресемплинг аудио до целевой частоты"""
-        try:
-            import librosa
-
-            # Используем librosa для ресемплинга
-            resampled = librosa.resample(
-                audio_data, orig_sr=original_rate, target_sr=target_rate
-            )
-            return resampled
-        except ImportError:
-            # Если librosa недоступен, используем простой линейный интерполяции
-            ratio = target_rate / original_rate
-            new_length = int(len(audio_data) * ratio)
-            resampled = np.interp(
-                np.linspace(0, len(audio_data), new_length),
-                np.arange(len(audio_data)),
-                audio_data,
-            )
-            return resampled
-        except Exception as e:
-            print(f"❌ Ошибка ресемплинга: {e}")
-            return audio_data  # Возвращаем оригинал если не получилось
 
     def send_audio_chunk(self, audio_data):
         """Отправка аудио чанка на детекцию"""
@@ -460,61 +365,19 @@ class AudioClient:
         """Основной цикл записи и отправки аудио"""
         print(f"🎙️ Начинаю запись аудио (чанки по {CHUNK_DURATION} сек)...")
 
-        update_counter = 0  # Счетчик для обновления информации об устройстве
-
         try:
             while self.is_running:
-                # Определяем размер чанка в зависимости от частоты
-                if hasattr(self, "fallback_sample_rate"):
-                    chunk_size = int(self.fallback_sample_rate * CHUNK_DURATION)
-                else:
-                    chunk_size = CHUNK_SIZE
-
                 # Читаем аудио данные
                 audio_data = np.frombuffer(
-                    self.stream.read(chunk_size, exception_on_overflow=False),
+                    self.stream.read(CHUNK_SIZE, exception_on_overflow=False),
                     dtype=np.float32,
                 )
-
-                # Ресемплинг если используется другая частота
-                if hasattr(self, "fallback_sample_rate"):
-                    audio_data = self.resample_audio(
-                        audio_data, self.fallback_sample_rate, SAMPLE_RATE
-                    )
 
                 # Отправляем на детекцию
                 self.send_audio_chunk(audio_data)
 
-                # Обновляем информацию об устройстве каждые 30 секунд (6 чанков по 5 сек)
-                update_counter += 1
-                if update_counter >= 6:
-                    self.update_device_info()
-                    update_counter = 0
-
         except Exception as e:
             print(f"❌ Ошибка в аудио цикле: {e}")
-
-    def update_device_info(self):
-        """Обновление информации об устройстве (WiFi сигнал и т.д.)"""
-        try:
-            device_info = self.get_device_info()
-            if device_info and self.device_id:
-                # Отправляем обновление через WebSocket или API
-                payload = {
-                    "type": "device_updated",
-                    "device_id": self.device_id,
-                    "device_info": {
-                        "wifi_signal": device_info["wifi_signal"],
-                        "microphone_info": device_info["microphone_info"],
-                        "last_seen": datetime.now().isoformat(),
-                    },
-                }
-
-                # Здесь можно отправить через WebSocket или отдельный API эндпоинт
-                print(f"📶 Обновление WiFi сигнала: {device_info['wifi_signal']}%")
-
-        except Exception as e:
-            print(f"❌ Ошибка обновления информации об устройстве: {e}")
 
     def start(self):
         """Запуск клиента"""

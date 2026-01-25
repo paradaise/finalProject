@@ -139,8 +139,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                     <div className="flex items-start gap-4 flex-1">
                       {/* Иконка устройства */}
                       <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">RP</span>
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-lg">RPi</span>
                         </div>
                       </div>
                       
@@ -163,11 +163,11 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                           </div>
                           <div>
                             <p className="text-gray-600">MAC адрес</p>
-                            <p className="font-medium font-mono text-xs">{device.mac_address}</p>
+                            <p className="font-bold font-mono text-sm">{device.mac_address}</p>
                           </div>
                           <div>
                             <p className="text-gray-600">ID устройства</p>
-                            <p className="font-medium font-mono text-xs">{device.id.substring(0, 8)}...</p>
+                            <p className="font-bold font-mono text-sm">{device.id}</p>
                           </div>
                           <div>
                             <p className="text-gray-600">Микрофон</p>

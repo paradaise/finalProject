@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DeviceList } from './components/DeviceList';
 import { DeviceDetail } from './components/DeviceDetail';
 import { CustomSounds } from './components/CustomSounds';
+import { NotificationManager } from './components/Notifications';
 import { apiClient } from './api/client';
 
 type Screen = 'devices' | 'device-detail' | 'custom-sounds';
@@ -44,6 +45,9 @@ export default function App() {
             ...(prev[data.device_id] || [])
           ].slice(0, 50)
         }));
+        
+        // Отправляем событие для уведомлений
+        window.dispatchEvent(new CustomEvent('soundDetected', { detail: data }));
       }
     });
 
@@ -123,6 +127,15 @@ export default function App() {
   // Main render
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Уведомления */}
+      <NotificationManager
+        customSounds={detections}
+        onSoundDetected={(data) => {
+          // Обработка звуковых событий
+          console.log('Sound detected:', data);
+        }}
+      />
+      
       {currentScreen === 'devices' && (
         <DeviceList
           devices={devices}

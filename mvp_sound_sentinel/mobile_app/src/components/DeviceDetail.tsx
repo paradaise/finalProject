@@ -28,11 +28,26 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
             timestamp: data.timestamp
           });
           
-          // Добавляем новую детекцию в начало списка
-          setDetections(prev => [data, ...prev.slice(0, 49)]);
+          // Проверяем на дубликаты перед добавлением
+          setDetections(prev => {
+            const isDuplicate = prev.length > 0 && 
+              prev[0].sound_type === data.sound_type && 
+              prev[0].confidence === data.confidence &&
+              Math.abs(new Date(prev[0].timestamp).getTime() - new Date(data.timestamp).getTime()) < 1000;
+            
+            if (!isDuplicate) {
+              return [data, ...prev.slice(0, 49)];
+            }
+            return prev;
+          });
           
           // Обновляем уровень звука (симуляция)
           setAudioLevel(Math.random() * 60 + 20); // 20-80 dB
+        }
+        
+        // Обновление информации об устройстве (включая WiFi)
+        if (data.type === 'device_updated' && data.device_id === deviceId) {
+          setDevice((prev: any) => prev ? { ...prev, ...data.device_info } : null);
         }
       }
     });
@@ -150,7 +165,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
               <Activity className="w-5 h-5 text-purple-600" />
               <div>
                 <p className="text-xs text-gray-600">MAC адрес</p>
-                <p className="font-mono text-xs">{device.mac_address}</p>
+                <p className="font-bold font-mono text-sm">{device.mac_address}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
@@ -171,7 +186,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
               <Clock className="w-5 h-5 text-gray-600" />
               <div>
                 <p className="text-xs text-gray-600">ID устройства</p>
-                <p className="font-mono text-xs">{device.id.substring(0, 8)}...</p>
+                <p className="font-bold font-mono text-sm">{device.id}</p>
               </div>
             </div>
           </div>
