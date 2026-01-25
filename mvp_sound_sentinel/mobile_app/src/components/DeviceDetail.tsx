@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Volume2, Clock, Activity } from 'lucide-react';
+import { ArrowLeft, Volume2, Clock, Activity, Wifi, Mic, Cpu, Globe } from 'lucide-react';
 import { AudioLevelChart } from './AudioLevelChart';
 import { apiClient } from '../api/client';
 
@@ -128,6 +128,55 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Device Info */}
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h2 className="text-lg font-semibold mb-4">Информация об устройстве</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <Cpu className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-xs text-gray-600">Модель</p>
+                <p className="font-medium">{device.model}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <Globe className="w-5 h-5 text-green-600" />
+              <div>
+                <p className="text-xs text-gray-600">IP адрес</p>
+                <p className="font-medium">{device.ip_address}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <Activity className="w-5 h-5 text-purple-600" />
+              <div>
+                <p className="text-xs text-gray-600">MAC адрес</p>
+                <p className="font-mono text-xs">{device.mac_address}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <Mic className="w-5 h-5 text-orange-600" />
+              <div>
+                <p className="text-xs text-gray-600">Микрофон</p>
+                <p className="font-medium text-sm">{device.microphone_info || 'Неизвестно'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <Wifi className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-xs text-gray-600">WiFi сигнал</p>
+                <p className="font-medium">{device.wifi_signal}%</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <Clock className="w-5 h-5 text-gray-600" />
+              <div>
+                <p className="text-xs text-gray-600">ID устройства</p>
+                <p className="font-mono text-xs">{device.id.substring(0, 8)}...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <div className="grid grid-cols-3 gap-4">

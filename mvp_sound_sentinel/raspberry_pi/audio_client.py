@@ -21,7 +21,7 @@ DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_DURATION = 3  # секунды на один чанк (увеличил для реже отправки)
+CHUNK_DURATION = 5  # секунды на один чанк (увеличил для реже отправки)
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
 
 

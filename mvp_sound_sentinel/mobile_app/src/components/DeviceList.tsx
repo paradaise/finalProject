@@ -1,7 +1,8 @@
 import React from 'react';
-import { Wifi, WifiOff, Settings, Volume2, Monitor, Plus, Trash2 } from 'lucide-react';
+import { Wifi, WifiOff, Settings, Volume2, Plus, Trash2 } from 'lucide-react';
 import { Device } from '../api/client';
 import { apiClient } from '../api/client';
+import { AddDeviceModal } from './AddDeviceModal';
 
 interface Props {
   devices: Device[];
@@ -11,6 +12,12 @@ interface Props {
 }
 
 export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds }: Props) {
+  const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
+
+  const handleAddDevice = (newDevice: any) => {
+    // Обновление списка устройств после добавления
+    window.location.reload();
+  };
   const getStatusIcon = (status: string) => {
     return status === 'online' ? (
       <Wifi className="w-5 h-5 text-green-500" />
@@ -76,7 +83,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {/* TODO: Добавить устройство */}}
+                onClick={() => setIsAddModalOpen(true)}
                 className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 <Plus className="w-5 h-5" />
@@ -113,7 +120,9 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
         <div className="space-y-4">
           {devices.length === 0 ? (
             <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-              <Monitor className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-xl">RP</span>
+              </div>
               <h3 className="text-lg font-medium text-gray-600 mb-2">Нет устройств</h3>
               <p className="text-gray-500">Подключите Raspberry Pi для начала мониторинга</p>
             </div>
@@ -130,26 +139,9 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                     <div className="flex items-start gap-4 flex-1">
                       {/* Иконка устройства */}
                       <div className="flex-shrink-0">
-                        {device.model_image_url ? (
-                          <img 
-                            src={device.model_image_url} 
-                            alt={device.model}
-                            className="w-12 h-12 rounded-lg object-cover"
-                            onError={(e) => {
-                              // Fallback иконка если изображение не загрузилось
-                              const target = e.currentTarget;
-                              target.style.display = 'none';
-                              const nextElement = target.nextElementSibling as HTMLElement;
-                              if (nextElement) {
-                                nextElement.style.display = 'block';
-                              }
-                            }}
-                          />
-                        ) : null}
-                        <Monitor 
-                          className="w-12 h-12 text-blue-600" 
-                          style={{ display: device.model_image_url ? 'none' : 'block' }}
-                        />
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">RP</span>
+                        </div>
                       </div>
                       
                       <div className="flex-1">
@@ -168,6 +160,14 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                           <div>
                             <p className="text-gray-600">IP адрес</p>
                             <p className="font-medium">{device.ip_address}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">MAC адрес</p>
+                            <p className="font-medium font-mono text-xs">{device.mac_address}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">ID устройства</p>
+                            <p className="font-medium font-mono text-xs">{device.id.substring(0, 8)}...</p>
                           </div>
                           <div>
                             <p className="text-gray-600">Микрофон</p>
@@ -235,6 +235,13 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
           )}
         </div>
       </div>
+
+      {/* Add Device Modal */}
+      <AddDeviceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAddDevice={handleAddDevice}
+      />
     </div>
   );
 }
