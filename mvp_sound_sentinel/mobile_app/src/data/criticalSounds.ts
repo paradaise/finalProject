@@ -30,6 +30,7 @@ export const CRITICAL_SOUNDS = [
   'Screaming',
   'Shout',
   'Yell',
+  'Crying', // Добавлено для детекции плача
   
   // Взлом и безопасность
   'Glass break',
@@ -87,7 +88,31 @@ export const HOUSEHOLD_SOUNDS = [
   'Scanner',
 ];
 
-// Функция проверки критичности звука
+// Исключенные звуки (не показывать уведомления)
+export const EXCLUDED_SOUNDS = [
+  'Speech',
+  'Silence',
+  'Music',
+  'Typing',
+  'Keyboard',
+  'Mouse',
+  'Inside',
+  'Background noise',
+  'White noise',
+  'Hum',
+  'Buzz',
+  'Electronic',
+  'Digital',
+  'Computer',
+];
+
+// Функция проверки исключенных звуков
+export const isExcludedSound = (soundType: string): boolean => {
+  return EXCLUDED_SOUNDS.some(excluded => 
+    soundType.toLowerCase().includes(excluded.toLowerCase()) ||
+    excluded.toLowerCase().includes(soundType.toLowerCase())
+  );
+};
 export const isCriticalSound = (soundType: string): boolean => {
   return CRITICAL_SOUNDS.some(critical => 
     soundType.toLowerCase().includes(critical.toLowerCase()) ||

@@ -101,16 +101,24 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
 
       {/* Stats */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
               <p className="text-sm text-gray-600">Устройств онлайн</p>
-              <p className="text-3xl font-bold text-gray-900">{onlineCount}/{devices.length}</p>
+              <p className="text-lg font-semibold text-green-600">
+                {devices.filter(d => d.status === 'online').length}/{devices.length}
+              </p>
             </div>
-            <div className="text-right">
+            <div className="text-center">
               <p className="text-sm text-gray-600">Всего детекций</p>
-              <p className="text-3xl font-bold text-blue-600">
+              <p className="text-lg font-semibold text-blue-600">
                 {Object.values(detections).reduce((sum, dets) => sum + dets.length, 0)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Активных устройств</p>
+              <p className="text-lg font-semibold text-purple-600">
+                {devices.filter(d => d.status === 'online').length}
               </p>
             </div>
           </div>
@@ -139,7 +147,23 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                     <div className="flex items-start gap-4 flex-1">
                       {/* Иконка устройства */}
                       <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg">
+                        <img 
+                          src="/images/raspberry-pi-icon.svg" 
+                          alt="Raspberry Pi"
+                          className="w-12 h-12 rounded-lg object-contain shadow-lg"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            const nextElement = target.nextElementSibling as HTMLElement;
+                            if (nextElement) {
+                              nextElement.style.display = 'block';
+                            }
+                          }}
+                        />
+                        <div 
+                          className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg"
+                          style={{ display: 'none' }}
+                        >
                           <span className="text-white font-bold text-lg">RPi</span>
                         </div>
                       </div>

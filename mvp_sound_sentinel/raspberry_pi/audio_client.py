@@ -21,7 +21,7 @@ DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_DURATION = 5  # секунды на один чанк (увеличил для реже отправки)
+CHUNK_DURATION = 10  # секунды на один чанк (увеличил для реже отправки)
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
 
 
@@ -485,9 +485,9 @@ class AudioClient:
                 # Отправляем на детекцию
                 self.send_audio_chunk(audio_data)
 
-                # Обновляем информацию об устройстве каждые 30 секунд (6 чанков по 5 сек)
+                # Обновляем информацию об устройстве каждые 30 секунд (3 чанка по 10 сек)
                 update_counter += 1
-                if update_counter >= 6:
+                if update_counter >= 3:
                     self.update_device_info()
                     update_counter = 0
 
@@ -499,19 +499,24 @@ class AudioClient:
         try:
             device_info = self.get_device_info()
             if device_info and self.device_id:
-                # Отправляем обновление через WebSocket или API
+                # Отправляем обновление через API
                 payload = {
-                    "type": "device_updated",
                     "device_id": self.device_id,
-                    "device_info": {
-                        "wifi_signal": device_info["wifi_signal"],
-                        "microphone_info": device_info["microphone_info"],
-                        "last_seen": datetime.now().isoformat(),
-                    },
+                    "wifi_signal": device_info["wifi_signal"],
+                    "microphone_info": device_info["microphone_info"],
+                    "last_seen": datetime.now().isoformat(),
                 }
 
-                # Здесь можно отправить через WebSocket или отдельный API эндпоинт
-                print(f"📶 Обновление WiFi сигнала: {device_info['wifi_signal']}%")
+                response = requests.put(
+                    f"{API_SERVER_URL}/update_device/{self.device_id}",
+                    json=payload,
+                    timeout=5,
+                )
+
+                if response.status_code == 200:
+                    print(f"📶 WiFi сигнал обновлен: {device_info['wifi_signal']}%")
+                else:
+                    print(f"❌ Ошибка обновления WiFi: {response.status_code}")
 
         except Exception as e:
             print(f"❌ Ошибка обновления информации об устройстве: {e}")

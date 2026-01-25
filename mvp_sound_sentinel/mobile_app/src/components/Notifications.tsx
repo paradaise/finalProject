@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, AlertTriangle, Bell } from 'lucide-react';
-import { isCriticalSound, isImportantSound, getSoundIcon } from '../data/criticalSounds';
+import { isCriticalSound, isImportantSound, getSoundIcon, isExcludedSound } from '../data/criticalSounds';
 
 interface Notification {
   id: string;
@@ -26,6 +26,12 @@ export function NotificationManager({ customSounds, onSoundDetected }: Props) {
     const handleSoundDetected = (data: any) => {
       const { sound_type, confidence, device_id, timestamp } = data;
       
+      // Проверяем на исключенные звуки
+      if (isExcludedSound(sound_type)) {
+        onSoundDetected(data);
+        return;
+      }
+      
       // Проверяем критичность и важность
       const isCritical = isCriticalSound(sound_type);
       const isImportant = isImportantSound(sound_type);
@@ -50,7 +56,18 @@ export function NotificationManager({ customSounds, onSoundDetected }: Props) {
           isImportant: isImportant || isCustomImportant,
         };
         
-        setNotifications(prev => [notification, ...prev.slice(0, 4)]); // Максимум 5 уведомлений
+        setNotifications(prev => {
+          // Проверяем на дубликаты
+          const isDuplicate = prev.some(n => 
+            n.soundType === sound_type && 
+            Math.abs(new Date(n.timestamp).getTime() - new Date(timestamp).getTime()) < 2000
+          );
+          
+          if (!isDuplicate) {
+            return [notification, ...prev.slice(0, 4)]; // Максимум 5 уведомлений
+          }
+          return prev;
+        });
         
         // Автоматически скрываем через 5 секунд
         setTimeout(() => {
@@ -82,7 +99,7 @@ export function NotificationManager({ customSounds, onSoundDetected }: Props) {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm">
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 max-w-sm">
       {/* Кнопка сворачивания/разворачивания */}
       <div className="flex justify-end mb-2">
         <button
