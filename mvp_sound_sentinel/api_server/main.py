@@ -44,7 +44,9 @@ class DeviceRegistration(BaseModel):
     name: str
     ip_address: str
     mac_address: str
-    model: str = "Unknown"
+    model: str
+    model_image_url: Optional[str] = None
+    microphone_info: Optional[str] = None
     wifi_signal: int = 0  # dBm
 
 
@@ -84,6 +86,8 @@ def init_database():
             ip_address TEXT NOT NULL,
             mac_address TEXT NOT NULL,
             model TEXT DEFAULT 'Unknown',
+            model_image_url TEXT,
+            microphone_info TEXT,
             wifi_signal INTEGER DEFAULT 0,
             status TEXT DEFAULT 'offline',
             last_seen TEXT,
@@ -261,13 +265,15 @@ async def register_device(device: DeviceRegistration):
         cursor.execute(
             """
             UPDATE devices 
-            SET name = ?, ip_address = ?, model = ?, wifi_signal = ?, status = 'online', last_seen = ?
+            SET name = ?, ip_address = ?, model = ?, model_image_url = ?, microphone_info = ?, wifi_signal = ?, status = 'online', last_seen = ?
             WHERE id = ?
         """,
             (
                 device.name,
                 device.ip_address,
                 device.model,
+                device.model_image_url,
+                device.microphone_info,
                 device.wifi_signal,
                 datetime.now().isoformat(),
                 device_id,
@@ -279,8 +285,8 @@ async def register_device(device: DeviceRegistration):
         device_id = str(uuid.uuid4())
         cursor.execute(
             """
-            INSERT INTO devices (id, name, ip_address, mac_address, model, wifi_signal, status, last_seen)
-            VALUES (?, ?, ?, ?, ?, ?, 'online', ?)
+            INSERT INTO devices (id, name, ip_address, mac_address, model, model_image_url, microphone_info, wifi_signal, status, last_seen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'online', ?)
         """,
             (
                 device_id,
@@ -288,6 +294,8 @@ async def register_device(device: DeviceRegistration):
                 device.ip_address,
                 device.mac_address,
                 device.model,
+                device.model_image_url,
+                device.microphone_info,
                 device.wifi_signal,
                 datetime.now().isoformat(),
             ),
@@ -406,7 +414,7 @@ async def get_devices():
 
     cursor.execute(
         """
-        SELECT id, name, ip_address, mac_address, model, wifi_signal, status, last_seen, created_at
+        SELECT id, name, ip_address, mac_address, model, model_image_url, microphone_info, wifi_signal, status, last_seen, created_at
         FROM devices
         ORDER BY last_seen DESC
     """
@@ -421,10 +429,12 @@ async def get_devices():
                 "ip_address": row[2],
                 "mac_address": row[3],
                 "model": row[4],
-                "wifi_signal": row[5],
-                "status": row[6],
-                "last_seen": row[7],
-                "created_at": row[8],
+                "model_image_url": row[5],
+                "microphone_info": row[6],
+                "wifi_signal": row[7],
+                "status": row[8],
+                "last_seen": row[9],
+                "created_at": row[10],
             }
         )
 

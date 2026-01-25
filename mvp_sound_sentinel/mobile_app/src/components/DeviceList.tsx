@@ -1,6 +1,7 @@
 import React from 'react';
 import { Wifi, WifiOff, Settings, Volume2, Monitor, Plus, Trash2 } from 'lucide-react';
 import { Device } from '../api/client';
+import { apiClient } from '../api/client';
 
 interface Props {
   devices: Device[];
@@ -23,13 +24,13 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
   };
 
   const getWifiSignalColor = (signal: number) => {
-    if (signal > -50) return 'text-green-600';
-    if (signal > -70) return 'text-yellow-600';
+    if (signal > 70) return 'text-green-600';
+    if (signal > 40) return 'text-yellow-600';
     return 'text-red-600';
   };
 
   const getWifiSignalBars = (signal: number) => {
-    const bars = Math.max(1, Math.min(4, Math.round((signal + 100) / 12.5)));
+    const bars = Math.max(1, Math.min(4, Math.round(signal / 25)));
     return Array(4).fill(0).map((_, i) => (
       <div
         key={i}
@@ -128,8 +129,27 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
                       {/* Иконка устройства */}
-                      <div className="p-3 bg-gray-100 rounded-lg">
-                        <Monitor className="w-8 h-8 text-gray-700" />
+                      <div className="flex-shrink-0">
+                        {device.model_image_url ? (
+                          <img 
+                            src={device.model_image_url} 
+                            alt={device.model}
+                            className="w-12 h-12 rounded-lg object-cover"
+                            onError={(e) => {
+                              // Fallback иконка если изображение не загрузилось
+                              const target = e.currentTarget;
+                              target.style.display = 'none';
+                              const nextElement = target.nextElementSibling as HTMLElement;
+                              if (nextElement) {
+                                nextElement.style.display = 'block';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <Monitor 
+                          className="w-12 h-12 text-blue-600" 
+                          style={{ display: device.model_image_url ? 'none' : 'block' }}
+                        />
                       </div>
                       
                       <div className="flex-1">
@@ -150,8 +170,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                             <p className="font-medium">{device.ip_address}</p>
                           </div>
                           <div>
-                            <p className="text-gray-600">MAC адрес</p>
-                            <p className="font-medium font-mono text-xs">{device.mac_address}</p>
+                            <p className="text-gray-600">Микрофон</p>
+                            <p className="font-medium text-gray-900">{device.microphone_info || 'Неизвестно'}</p>
                           </div>
                           <div>
                             <p className="text-gray-600">WiFi сигнал</p>
@@ -160,7 +180,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                                 {getWifiSignalBars(device.wifi_signal)}
                               </div>
                               <span className={`font-medium ${getWifiSignalColor(device.wifi_signal)}`}>
-                                {device.wifi_signal} dBm
+                                {device.wifi_signal}%
                               </span>
                             </div>
                           </div>
@@ -195,8 +215,13 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                       onClick={(e) => {
                         e.stopPropagation();
                         if (window.confirm(`Удалить устройство "${device.name}"?`)) {
-                          // TODO: Вызвать API для удаления
-                          console.log('Удаление устройства:', device.id);
+                          apiClient.deleteDevice(device.id).then(() => {
+                            // Обновляем список устройств
+                            window.location.reload();
+                          }).catch((error: any) => {
+                            console.error('Error deleting device:', error);
+                            alert('Ошибка удаления устройства');
+                          });
                         }
                       }}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

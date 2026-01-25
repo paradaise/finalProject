@@ -6,6 +6,8 @@ export interface Device {
   ip_address: string;
   mac_address: string;
   model: string;
+  model_image_url?: string;
+  microphone_info?: string;
   wifi_signal: number;
   status: string;
   last_seen: string;
