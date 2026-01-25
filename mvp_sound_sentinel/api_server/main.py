@@ -451,6 +451,7 @@ async def update_device(device_id: str, device_update: dict):
         conn.close()
 
 
+@app.get("/yamnet_sounds")
 async def get_yamnet_sounds():
     """Получение полного списка звуков YAMNet"""
     # Полный список классов YAMNet (521 звук)
@@ -1058,6 +1059,13 @@ async def get_yamnet_sounds():
     # Удаляем дубликаты и сортируем
     unique_sounds = sorted(list(set(yamnet_classes)))
 
+    return {"sounds": unique_sounds, "total": len(unique_sounds)}
+
+
+@app.get("/devices")
+async def get_devices():
+    """Получение списка устройств"""
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute(
