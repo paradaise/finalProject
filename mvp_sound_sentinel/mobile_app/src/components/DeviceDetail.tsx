@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Volume2, Clock, Activity, Wifi, Mic, Cpu, Globe } from 'lucide-react';
-import { AudioLevelChart } from './AudioLevelChart';
+import { Wifi, Volume2, Clock, Activity, Mic, Globe, ArrowLeft, Cpu } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { getSoundIcon } from '../data/criticalSounds';
+import { AudioLevelChart } from './AudioLevelChart';
 
 interface Props {
   deviceId: string;
@@ -66,8 +67,8 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
       const currentDevice = devices.find(d => d.id === deviceId);
       setDevice(currentDevice);
 
-      // Загружаем детекции
-      const deviceDetections = await apiClient.getDeviceEvents(deviceId, 50);
+      // Загружаем детекции (получаем общее количество)
+      const deviceDetections = await apiClient.getDeviceEvents(deviceId, 1000);
       setDetections(deviceDetections);
       
       if (deviceDetections.length > 0) {
@@ -194,16 +195,12 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
 
         {/* Stats */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
               <p className="text-sm text-gray-600">Статус</p>
               <p className="text-lg font-semibold text-green-600">
                 {device.status === 'online' ? 'Онлайн' : 'Офлайн'}
               </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Детекций</p>
-              <p className="text-lg font-semibold text-blue-600">{detections.length}</p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-600">Последняя активность</p>
@@ -251,7 +248,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
-              {detections.map((detection) => (
+              {detections.slice(0, 50).map((detection) => (
                 <div
                   key={detection.id}
                   className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-blue-500"
@@ -259,7 +256,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <Volume2 className="w-5 h-5 text-blue-600" />
+                        <span className="text-xl">{getSoundIcon(detection.sound_type)}</span>
                         <h3 className="font-semibold text-gray-900">
                           {detection.sound_type}
                         </h3>
@@ -267,15 +264,20 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                           {(detection.confidence * 100).toFixed(1)}%
                         </span>
                       </div>
-                      
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="w-4 h-4" />
-                        <span>{formatTime(detection.timestamp)}</span>
-                      </div>
+                      <p className="text-sm text-gray-600">
+                        {formatTime(detection.timestamp)}
+                      </p>
                     </div>
                   </div>
                 </div>
               ))}
+              {detections.length > 50 && (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 text-sm">
+                    Показано 50 из {detections.length} детекций
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

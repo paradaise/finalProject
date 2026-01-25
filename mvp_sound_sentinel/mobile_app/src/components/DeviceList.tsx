@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wifi, WifiOff, Settings, Volume2, Plus, Trash2 } from 'lucide-react';
+import { Wifi, WifiOff, Settings, Volume2, Plus, Trash2, Bell } from 'lucide-react';
 import { Device } from '../api/client';
 import { apiClient } from '../api/client';
 import { AddDeviceModal } from './AddDeviceModal';
@@ -9,9 +9,10 @@ interface Props {
   detections: { [key: string]: any[] };
   onSelectDevice: (deviceId: string) => void;
   onCustomSounds: () => void;
+  onNotificationSettings: () => void;
 }
 
-export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds }: Props) {
+export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds, onNotificationSettings }: Props) {
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
 
   const handleAddDevice = (newDevice: any) => {
@@ -94,6 +95,12 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
               >
                 <Settings className="w-5 h-5" />
               </button>
+              <button
+                onClick={onNotificationSettings}
+                className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                <Bell className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -148,9 +155,9 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                       {/* Иконка устройства */}
                       <div className="flex-shrink-0">
                         <img 
-                          src="/images/raspberry-pi-icon.svg" 
+                          src="/images/raspberry-pi-logo-svgrepo-com.svg" 
                           alt="Raspberry Pi"
-                          className="w-12 h-12 rounded-lg object-contain shadow-lg"
+                          className="w-12 h-12 rounded-lg object-contain shadow-lg hover:scale-110 transition-transform duration-200"
                           onError={(e) => {
                             const target = e.currentTarget;
                             target.style.display = 'none';

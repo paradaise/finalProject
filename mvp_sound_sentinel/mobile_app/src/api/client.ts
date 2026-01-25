@@ -100,8 +100,10 @@ class ApiClient {
   }
 
   // Получение детекций для устройства
-  async getDeviceEvents(deviceId: string, limit: number = 50): Promise<SoundDetection[]> {
-    return this.request(`/detections/${deviceId}?limit=${limit}`);
+  async getDeviceEvents(deviceId: string, limit: number = 1000): Promise<any[]> {
+    const response = await this.request(`/detections/${deviceId}?limit=${limit}`);
+    // Возвращаем detections из нового формата
+    return response.detections || response;
   }
 
   // WebSocket для реального времени
@@ -139,6 +141,11 @@ class ApiClient {
   // Проверка здоровья API
   async healthCheck(): Promise<any> {
     return this.request('/health');
+  }
+
+  // Получение всех звуков YAMNet
+  async getYamnetSounds(): Promise<any> {
+    return this.request('/yamnet_sounds');
   }
 }
 

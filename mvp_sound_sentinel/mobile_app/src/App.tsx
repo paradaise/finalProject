@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { DeviceList } from './components/DeviceList';
 import { DeviceDetail } from './components/DeviceDetail';
 import { CustomSounds } from './components/CustomSounds';
-import { NotificationManager } from './components/Notifications';
+import { NotificationSettings } from './components/NotificationSettings';
+import { ImprovedNotificationManager } from './components/ImprovedNotifications';
 import { apiClient } from './api/client';
 
-type Screen = 'devices' | 'device-detail' | 'custom-sounds';
+type Screen = 'devices' | 'device-detail' | 'custom-sounds' | 'notification-settings';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('devices');
@@ -65,10 +66,10 @@ export default function App() {
       const devicesData = await apiClient.getDevices();
       setDevices(devicesData);
       
-      // Загрузка детекций для каждого устройства
+      // Загрузка детекций для каждого устройства (убираем ограничение)
       const detectionsData: { [key: string]: any[] } = {};
       for (const device of devicesData) {
-        const deviceDetections = await apiClient.getDeviceEvents(device.id, 20);
+        const deviceDetections = await apiClient.getDeviceEvents(device.id, 1000);
         detectionsData[device.id] = deviceDetections;
       }
       setDetections(detectionsData);
@@ -128,9 +129,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Уведомления */}
-      <NotificationManager
+      <ImprovedNotificationManager
         customSounds={detections}
-        onSoundDetected={(data) => {
+        onSoundDetected={(data: any) => {
           // Обработка звуковых событий
           console.log('Sound detected:', data);
         }}
@@ -142,6 +143,7 @@ export default function App() {
           detections={detections}
           onSelectDevice={handleSelectDevice}
           onCustomSounds={() => setCurrentScreen('custom-sounds')}
+          onNotificationSettings={() => setCurrentScreen('notification-settings')}
         />
       )}
       
@@ -158,6 +160,12 @@ export default function App() {
           onBack={() => setCurrentScreen('devices')}
           onRefresh={loadData}
           selectedDeviceId={selectedDeviceId || undefined}
+        />
+      )}
+      
+      {currentScreen === 'notification-settings' && (
+        <NotificationSettings 
+          onBack={() => setCurrentScreen('devices')}
         />
       )}
     </div>
