@@ -319,22 +319,41 @@ class AudioClient:
                 print("🔄 Пробуем стандартную частоту 44100 Hz...")
                 return self.init_audio_fallback()
 
-            # Используем первое поддерживаемое устройство
-            device_index = supported_devices[0]
-            device_info = self.audio.get_device_info_by_index(device_index)
-            print(f"🎤 Используем устройство: {device_info['name']}")
+            # Пробуем устройства в порядке приоритета
+            priority_devices = []
 
-            self.stream = self.audio.open(
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=SAMPLE_RATE,
-                input=True,
-                input_device_index=device_index,
-                frames_per_buffer=CHUNK_SIZE,
-            )
+            # Сначала пробуем pulse (обычно работает лучше)
+            for i in supported_devices:
+                info = self.audio.get_device_info_by_index(i)
+                if "pulse" in info["name"].lower():
+                    priority_devices.insert(0, i)
+                else:
+                    priority_devices.append(i)
 
-            print("✅ Аудио поток инициализирован")
-            return True
+            for device_index in priority_devices:
+                try:
+                    device_info = self.audio.get_device_info_by_index(device_index)
+                    print(f"🎤 Пробую устройство: {device_info['name']}")
+
+                    self.stream = self.audio.open(
+                        format=FORMAT,
+                        channels=CHANNELS,
+                        rate=SAMPLE_RATE,
+                        input=True,
+                        input_device_index=device_index,
+                        frames_per_buffer=CHUNK_SIZE,
+                    )
+
+                    print(f"✅ Аудио поток инициализирован с {device_info['name']}")
+                    return True
+
+                except Exception as e:
+                    print(f"❌ Устройство {device_info['name']} недоступно: {e}")
+                    continue
+
+            print("❌ Все устройства недоступны!")
+            print("🔄 Пробуем запасной вариант...")
+            return self.init_audio_fallback()
 
         except Exception as e:
             print(f"❌ Ошибка инициализации аудио: {e}")
