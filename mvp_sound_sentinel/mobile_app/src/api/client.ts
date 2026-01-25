@@ -5,6 +5,8 @@ export interface Device {
   name: string;
   ip_address: string;
   mac_address: string;
+  model: string;
+  wifi_signal: number;
   status: string;
   last_seen: string;
   created_at: string;
@@ -83,6 +85,21 @@ class ApiClient {
     return this.request(`/custom_sounds/${soundId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Удаление устройства
+  async deleteDevice(deviceId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/devices/${deviceId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete device');
+    }
+  }
+
+  // Получение детекций для устройства
+  async getDeviceEvents(deviceId: string, limit: number = 50): Promise<SoundDetection[]> {
+    return this.request(`/detections/${deviceId}?limit=${limit}`);
   }
 
   // WebSocket для реального времени

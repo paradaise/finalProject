@@ -44,6 +44,8 @@ class DeviceRegistration(BaseModel):
     name: str
     ip_address: str
     mac_address: str
+    model: str = "Unknown"
+    wifi_signal: int = 0  # dBm
 
 
 class AudioData(BaseModel):
@@ -81,6 +83,8 @@ def init_database():
             name TEXT NOT NULL,
             ip_address TEXT NOT NULL,
             mac_address TEXT NOT NULL,
+            model TEXT DEFAULT 'Unknown',
+            wifi_signal INTEGER DEFAULT 0,
             status TEXT DEFAULT 'offline',
             last_seen TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -97,8 +101,8 @@ def init_database():
             sound_type TEXT NOT NULL,
             confidence REAL NOT NULL,
             timestamp TEXT NOT NULL,
-            mfcc_features TEXT,  # JSON
-            audio_data TEXT,     # JSON (опционально)
+            mfcc_features TEXT,
+            audio_data TEXT,
             FOREIGN KEY (device_id) REFERENCES devices (id)
         )
     """
@@ -110,8 +114,8 @@ def init_database():
         CREATE TABLE IF NOT EXISTS custom_sounds (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
-            sound_type TEXT NOT NULL,  # "excluded" или "specific"
-            mfcc_features TEXT NOT NULL,  # JSON
+            sound_type TEXT NOT NULL,
+            mfcc_features TEXT NOT NULL,
             device_id TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (device_id) REFERENCES devices (id)
@@ -241,25 +245,54 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/register_device")
 async def register_device(device: DeviceRegistration):
-    """Регистрация нового устройства"""
-    device_id = str(uuid.uuid4())
-
+    """Регистрация нового устройства или обновление существующего"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
+    # Проверяем существует ли устройство с таким MAC адресом
     cursor.execute(
-        """
-        INSERT INTO devices (id, name, ip_address, mac_address, status, last_seen)
-        VALUES (?, ?, ?, ?, 'online', ?)
-    """,
-        (
-            device_id,
-            device.name,
-            device.ip_address,
-            device.mac_address,
-            datetime.now().isoformat(),
-        ),
+        "SELECT id FROM devices WHERE mac_address = ?", (device.mac_address,)
     )
+    existing_device = cursor.fetchone()
+
+    if existing_device:
+        # Обновляем существующее устройство
+        device_id = existing_device[0]
+        cursor.execute(
+            """
+            UPDATE devices 
+            SET name = ?, ip_address = ?, model = ?, wifi_signal = ?, status = 'online', last_seen = ?
+            WHERE id = ?
+        """,
+            (
+                device.name,
+                device.ip_address,
+                device.model,
+                device.wifi_signal,
+                datetime.now().isoformat(),
+                device_id,
+            ),
+        )
+        print(f"🔄 Устройство обновлено: {device.name}")
+    else:
+        # Создаем новое устройство
+        device_id = str(uuid.uuid4())
+        cursor.execute(
+            """
+            INSERT INTO devices (id, name, ip_address, mac_address, model, wifi_signal, status, last_seen)
+            VALUES (?, ?, ?, ?, ?, ?, 'online', ?)
+        """,
+            (
+                device_id,
+                device.name,
+                device.ip_address,
+                device.mac_address,
+                device.model,
+                device.wifi_signal,
+                datetime.now().isoformat(),
+            ),
+        )
+        print(f"✅ Новое устройство зарегистрировано: {device.name}")
 
     conn.commit()
     conn.close()
@@ -336,6 +369,35 @@ async def detect_sound_endpoint(audio: AudioData):
     }
 
 
+@app.delete("/devices/{device_id}")
+async def delete_device(device_id: str):
+    """Удаление устройства"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Удаляем связанные детекции
+    cursor.execute("DELETE FROM sound_detections WHERE device_id = ?", (device_id,))
+
+    # Удаляем связанные пользовательские звуки
+    cursor.execute("DELETE FROM custom_sounds WHERE device_id = ?", (device_id,))
+
+    # Удаляем устройство
+    cursor.execute("DELETE FROM devices WHERE id = ?", (device_id,))
+
+    conn.commit()
+    conn.close()
+
+    # Рассылка обновления
+    await broadcast_to_websockets(
+        {
+            "type": "device_deleted",
+            "device_id": device_id,
+        }
+    )
+
+    return {"status": "deleted"}
+
+
 @app.get("/devices")
 async def get_devices():
     """Получение списка устройств"""
@@ -344,7 +406,7 @@ async def get_devices():
 
     cursor.execute(
         """
-        SELECT id, name, ip_address, mac_address, status, last_seen, created_at
+        SELECT id, name, ip_address, mac_address, model, wifi_signal, status, last_seen, created_at
         FROM devices
         ORDER BY last_seen DESC
     """
@@ -358,9 +420,11 @@ async def get_devices():
                 "name": row[1],
                 "ip_address": row[2],
                 "mac_address": row[3],
-                "status": row[4],
-                "last_seen": row[5],
-                "created_at": row[6],
+                "model": row[4],
+                "wifi_signal": row[5],
+                "status": row[6],
+                "last_seen": row[7],
+                "created_at": row[8],
             }
         )
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wifi, WifiOff, Settings, Volume2 } from 'lucide-react';
+import { Wifi, WifiOff, Settings, Volume2, Monitor, Plus, Trash2 } from 'lucide-react';
 import { Device } from '../api/client';
 
 interface Props {
@@ -20,6 +20,24 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
 
   const getStatusColor = (status: string) => {
     return status === 'online' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50';
+  };
+
+  const getWifiSignalColor = (signal: number) => {
+    if (signal > -50) return 'text-green-600';
+    if (signal > -70) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getWifiSignalBars = (signal: number) => {
+    const bars = Math.max(1, Math.min(4, Math.round((signal + 100) / 12.5)));
+    return Array(4).fill(0).map((_, i) => (
+      <div
+        key={i}
+        className={`w-1 h-3 mx-0.5 rounded-sm ${
+          i < bars ? 'bg-current' : 'bg-gray-300'
+        }`}
+      />
+    ));
   };
 
   const formatLastSeen = (lastSeen: string) => {
@@ -55,12 +73,20 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
               <h1 className="text-2xl font-bold text-gray-900">Sound Sentinel</h1>
               <p className="text-sm text-gray-600">Мониторинг звуков в реальном времени</p>
             </div>
-            <button
-              onClick={onCustomSounds}
-              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {/* TODO: Добавить устройство */}}
+                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onCustomSounds}
+                className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -86,7 +112,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
         <div className="space-y-4">
           {devices.length === 0 ? (
             <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-              <Volume2 className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <Monitor className="w-16 h-16 mx-auto text-gray-300 mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">Нет устройств</h3>
               <p className="text-gray-500">Подключите Raspberry Pi для начала мониторинга</p>
             </div>
@@ -100,39 +126,83 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                   onClick={() => onSelectDevice(device.id)}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        {getStatusIcon(device.status)}
-                        <h3 className="text-lg font-semibold text-gray-900">{device.name}</h3>
+                    <div className="flex items-start gap-4 flex-1">
+                      {/* Иконка устройства */}
+                      <div className="p-3 bg-gray-100 rounded-lg">
+                        <Monitor className="w-8 h-8 text-gray-700" />
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-600">IP адрес</p>
-                          <p className="font-medium">{device.ip_address}</p>
+                      <div className="flex-1">
+                        {/* Название и статус */}
+                        <div className="flex items-center gap-3 mb-2">
+                          {getStatusIcon(device.status)}
+                          <h3 className="text-lg font-semibold text-gray-900">{device.name}</h3>
                         </div>
-                        <div>
-                          <p className="text-gray-600">Последняя активность</p>
-                          <p className="font-medium">{formatLastSeen(device.last_seen)}</p>
-                        </div>
-                      </div>
-
-                      {latestDetection && (
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-blue-900">
-                                Последний звук: {latestDetection.sound_type}
-                              </p>
-                              <p className="text-xs text-blue-700">
-                                Уверенность: {(latestDetection.confidence * 100).toFixed(1)}%
-                              </p>
+                        
+                        {/* Информация об устройстве */}
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <p className="text-gray-600">Модель</p>
+                            <p className="font-medium text-gray-900">{device.model}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">IP адрес</p>
+                            <p className="font-medium">{device.ip_address}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">MAC адрес</p>
+                            <p className="font-medium font-mono text-xs">{device.mac_address}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">WiFi сигнал</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center">
+                                {getWifiSignalBars(device.wifi_signal)}
+                              </div>
+                              <span className={`font-medium ${getWifiSignalColor(device.wifi_signal)}`}>
+                                {device.wifi_signal} dBm
+                              </span>
                             </div>
-                            <Volume2 className="w-5 h-5 text-blue-600" />
                           </div>
                         </div>
-                      )}
+
+                        {/* Последняя активность */}
+                        <div className="text-sm text-gray-600">
+                          Последняя активность: {formatLastSeen(device.last_seen)}
+                        </div>
+
+                        {/* Последняя детекция */}
+                        {latestDetection && (
+                          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-blue-900">
+                                  Последний звук: {latestDetection.sound_type}
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  Уверенность: {(latestDetection.confidence * 100).toFixed(1)}%
+                                </p>
+                              </div>
+                              <Volume2 className="w-5 h-5 text-blue-600" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    
+                    {/* Кнопка удаления */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Удалить устройство "${device.name}"?`)) {
+                          // TODO: Вызвать API для удаления
+                          console.log('Удаление устройства:', device.id);
+                        }
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               );

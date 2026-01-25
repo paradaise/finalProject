@@ -64,7 +64,7 @@ export default function App() {
       // Загрузка детекций для каждого устройства
       const detectionsData: { [key: string]: any[] } = {};
       for (const device of devicesData) {
-        const deviceDetections = await apiClient.getDetections(device.id, 20);
+        const deviceDetections = await apiClient.getDeviceEvents(device.id, 20);
         detectionsData[device.id] = deviceDetections;
       }
       setDetections(detectionsData);
@@ -135,17 +135,16 @@ export default function App() {
       {currentScreen === 'device-detail' && selectedDeviceId && (
         <DeviceDetail
           deviceId={selectedDeviceId}
-          device={devices.find(d => d.id === selectedDeviceId)}
-          detections={detections[selectedDeviceId] || []}
           onBack={handleBack}
         />
       )}
       
       {currentScreen === 'custom-sounds' && (
-        <CustomSounds
+        <CustomSounds 
           sounds={customSounds}
-          onBack={handleBack}
+          onBack={() => setCurrentScreen('devices')}
           onRefresh={loadData}
+          selectedDeviceId={selectedDeviceId || undefined}
         />
       )}
     </div>

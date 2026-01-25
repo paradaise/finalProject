@@ -22,7 +22,7 @@ DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_DURATION = 2  # секунды на один чанк
+CHUNK_DURATION = 3  # секунды на один чанк (увеличил для реже отправки)
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
 
 
@@ -36,9 +36,8 @@ class AudioClient:
     def get_device_info(self):
         """Получение информации об устройстве"""
         try:
-            # Получаем IP адрес
-            hostname = socket.gethostname()
-            ip_address = socket.gethostbyname(hostname)
+            # Получаем реальный IP адрес (не localhost)
+            ip_address = self.get_real_ip_address()
 
             # Получаем MAC адрес
             mac = ":".join(
@@ -48,10 +47,79 @@ class AudioClient:
                 ][::-1]
             )
 
-            return {"name": DEVICE_NAME, "ip_address": ip_address, "mac_address": mac}
+            # Определяем модель Raspberry Pi
+            model = self.get_raspberry_pi_model()
+
+            # Получаем уровень сигнала WiFi (примерная реализация)
+            wifi_signal = self.get_wifi_signal()
+
+            return {
+                "name": DEVICE_NAME,
+                "ip_address": ip_address,
+                "mac_address": mac,
+                "model": model,
+                "wifi_signal": wifi_signal,
+            }
         except Exception as e:
             print(f"❌ Ошибка получения информации об устройстве: {e}")
             return None
+
+    def get_real_ip_address(self):
+        """Получение реального IP адреса, а не 127.0.0.1"""
+        try:
+            # Создаем сокет для подключения к внешнему адресу
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                real_ip = s.getsockname()[0]
+            return real_ip
+        except:
+            # Fallback к hostname
+            try:
+                hostname = socket.gethostname()
+                return socket.gethostbyname(hostname)
+            except:
+                return "127.0.0.1"
+
+    def get_raspberry_pi_model(self):
+        """Определение модели Raspberry Pi"""
+        try:
+            # Сначала пробуем файл из /sys/firmware/devicetree/base/model
+            try:
+                with open("/sys/firmware/devicetree/base/model", "r") as f:
+                    model_info = f.read().strip()
+                    if "Raspberry Pi" in model_info:
+                        return model_info
+            except:
+                pass
+
+            # Fallback к /proc/cpuinfo
+            with open("/proc/cpuinfo", "r") as f:
+                for line in f:
+                    if line.startswith("Model"):
+                        model_info = line.split(":")[1].strip()
+                        if "Raspberry Pi" in model_info:
+                            return model_info
+            return "Raspberry Pi (Unknown model)"
+        except:
+            return "Raspberry Pi"
+
+    def get_wifi_signal(self):
+        """Получение уровня сигнала WiFi в dBm"""
+        try:
+            # Попытка получить уровень сигнала через iwconfig
+            import subprocess
+
+            result = subprocess.run(
+                ["iwconfig", "wlan0"], capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                for line in result.stdout.split("\n"):
+                    if "Signal level=" in line:
+                        signal_part = line.split("Signal level=")[1].split(" ")[0]
+                        return int(signal_part.replace("dBm", ""))
+        except:
+            pass
+        return -70  # Значение по умолчанию
 
     def register_device(self):
         """Регистрация устройства на API сервере"""
