@@ -290,6 +290,7 @@ class AudioClient:
             self.audio = pyaudio.PyAudio()
 
             print("🎤 Доступные аудио устройства:")
+            supported_devices = []
             for i in range(self.audio.get_device_count()):
                 info = self.audio.get_device_info_by_index(i)
                 if info["maxInputChannels"] > 0:
@@ -297,18 +298,29 @@ class AudioClient:
                         f"  [{i}] {info['name']} (каналов: {info['maxInputChannels']})"
                     )
 
-            # Ищем устройство по умолчанию или первое доступное
-            device_index = None
-            for i in range(self.audio.get_device_count()):
-                info = self.audio.get_device_info_by_index(i)
-                if info["maxInputChannels"] > 0:
-                    device_index = i
-                    break
+                    # Проверяем поддерживаемые частоты дискретизации
+                    try:
+                        test_stream = self.audio.open(
+                            format=FORMAT,
+                            channels=CHANNELS,
+                            rate=SAMPLE_RATE,
+                            input=True,
+                            input_device_index=i,
+                            frames_per_buffer=1024,
+                        )
+                        test_stream.close()
+                        supported_devices.append(i)
+                        print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
+                    except:
+                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz")
 
-            if device_index is None:
-                print("❌ Не найдено аудио устройств с поддержкой записи!")
-                return False
+            if not supported_devices:
+                print("❌ Ни одно устройство не поддерживает 16000 Hz!")
+                print("🔄 Пробуем стандартную частоту 44100 Hz...")
+                return self.init_audio_fallback()
 
+            # Используем первое поддерживаемое устройство
+            device_index = supported_devices[0]
             device_info = self.audio.get_device_info_by_index(device_index)
             print(f"🎤 Используем устройство: {device_info['name']}")
 
@@ -326,7 +338,71 @@ class AudioClient:
 
         except Exception as e:
             print(f"❌ Ошибка инициализации аудио: {e}")
+            print("🔄 Пробуем запасной вариант...")
+            return self.init_audio_fallback()
+
+    def init_audio_fallback(self):
+        """Запасной вариант инициализации аудио"""
+        try:
+            # Пробуем с частотой 44100 Hz и последующим ресемплингом
+            fallback_sample_rate = 44100
+
+            print(f"🔄 Пробую инициализировать с {fallback_sample_rate} Hz...")
+
+            device_index = None
+            for i in range(self.audio.get_device_count()):
+                info = self.audio.get_device_info_by_index(i)
+                if info["maxInputChannels"] > 0:
+                    device_index = i
+                    break
+
+            if device_index is None:
+                print("❌ Не найдено аудио устройств!")
+                return False
+
+            device_info = self.audio.get_device_info_by_index(device_index)
+            print(f"🎤 Используем устройство: {device_info['name']}")
+
+            self.stream = self.audio.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=fallback_sample_rate,
+                input=True,
+                input_device_index=device_index,
+                frames_per_buffer=int(fallback_sample_rate * CHUNK_DURATION),
+            )
+
+            self.fallback_sample_rate = fallback_sample_rate
+            print(f"✅ Аудио поток инициализирован с {fallback_sample_rate} Hz")
+            return True
+
+        except Exception as e:
+            print(f"❌ Ошибка запасной инициализации аудио: {e}")
             return False
+
+    def resample_audio(self, audio_data, original_rate, target_rate):
+        """Ресемплинг аудио до целевой частоты"""
+        try:
+            import librosa
+
+            # Используем librosa для ресемплинга
+            resampled = librosa.resample(
+                audio_data, orig_sr=original_rate, target_sr=target_rate
+            )
+            return resampled
+        except ImportError:
+            # Если librosa недоступен, используем простой линейный интерполяции
+            ratio = target_rate / original_rate
+            new_length = int(len(audio_data) * ratio)
+            resampled = np.interp(
+                np.linspace(0, len(audio_data), new_length),
+                np.arange(len(audio_data)),
+                audio_data,
+            )
+            return resampled
+        except Exception as e:
+            print(f"❌ Ошибка ресемплинга: {e}")
+            return audio_data  # Возвращаем оригинал если не получилось
 
     def send_audio_chunk(self, audio_data):
         """Отправка аудио чанка на детекцию"""
@@ -367,11 +443,23 @@ class AudioClient:
 
         try:
             while self.is_running:
+                # Определяем размер чанка в зависимости от частоты
+                if hasattr(self, "fallback_sample_rate"):
+                    chunk_size = int(self.fallback_sample_rate * CHUNK_DURATION)
+                else:
+                    chunk_size = CHUNK_SIZE
+
                 # Читаем аудио данные
                 audio_data = np.frombuffer(
-                    self.stream.read(CHUNK_SIZE, exception_on_overflow=False),
+                    self.stream.read(chunk_size, exception_on_overflow=False),
                     dtype=np.float32,
                 )
+
+                # Ресемплинг если используется другая частота
+                if hasattr(self, "fallback_sample_rate"):
+                    audio_data = self.resample_audio(
+                        audio_data, self.fallback_sample_rate, SAMPLE_RATE
+                    )
 
                 # Отправляем на детекцию
                 self.send_audio_chunk(audio_data)
