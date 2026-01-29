@@ -4,6 +4,7 @@ import { DeviceDetail } from './components/DeviceDetail';
 import { CustomSounds } from './components/CustomSounds';
 import { NotificationSettings } from './components/NotificationSettings';
 import { ImprovedNotificationManager } from './components/ImprovedNotifications';
+import { Activity } from 'lucide-react';
 import { apiClient } from './api/client';
 
 type Screen = 'devices' | 'device-detail' | 'custom-sounds' | 'notification-settings';
@@ -99,10 +100,16 @@ export default function App() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center px-4">
+          <div className="relative">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl">
+              <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            </div>
+            <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto animate-ping opacity-20"></div>
+          </div>
+          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
+          <p className="text-gray-600 font-medium text-sm sm:text-base">Загрузка Sound Sentinel...</p>
         </div>
       </div>
     );
@@ -111,15 +118,21 @@ export default function App() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">⚠️ {error}</div>
-          <button 
-            onClick={loadData}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Попробовать снова
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center px-4">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl">
+            <span className="text-white font-bold text-xl sm:text-2xl">!</span>
+          </div>
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100 max-w-sm sm:max-w-md">
+            <h3 className="text-base sm:text-lg font-bold text-red-600 mb-2">Ошибка подключения</h3>
+            <p className="text-gray-600 text-sm sm:text-base mb-4">{error}</p>
+            <button 
+              onClick={loadData}
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 font-medium text-sm sm:text-base group"
+            >
+              Попробовать снова
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -127,7 +140,7 @@ export default function App() {
 
   // Main render
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Уведомления */}
       <ImprovedNotificationManager
         customSounds={detections}

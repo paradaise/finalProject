@@ -203,7 +203,8 @@ export function NotificationSettings({ onBack }: Props) {
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4">
+            {/* Заголовок */}
             <div className="flex items-center gap-3">
               <button
                 onClick={onBack}
@@ -212,28 +213,32 @@ export function NotificationSettings({ onBack }: Props) {
                 <X className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Настройки уведомлений</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Настройки уведомлений</h1>
                 <p className="text-sm text-gray-600">Управление звуками для уведомлений</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            
+            {/* Кнопки действий */}
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => setShowYamnetModal(true)}
-                className="px-4 py-2 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm font-medium"
+                className="flex-1 sm:flex-none px-3 py-2 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <Plus className="w-4 h-4" />
-                Добавить из YAMNet
+                <span className="hidden sm:inline">Добавить из YAMNet</span>
+                <span className="sm:hidden">YAMNet</span>
               </button>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 h-10 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm font-medium"
+                className="flex-1 sm:flex-none px-3 py-2 h-10 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <Plus className="w-4 h-4" />
-                Добавить свой звук
+                <span className="hidden sm:inline">Добавить свой звук</span>
+                <span className="sm:hidden">Свой звук</span>
               </button>
               <button
                 onClick={saveSettings}
-                className="px-4 py-2 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                className="flex-1 sm:flex-none px-3 py-2 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 Сохранить
               </button>
@@ -266,9 +271,10 @@ export function NotificationSettings({ onBack }: Props) {
         </div>
 
         {/* Search and Filter */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mt-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm mt-4">
+          <div className="flex flex-col gap-4">
+            {/* Search */}
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
@@ -278,47 +284,53 @@ export function NotificationSettings({ onBack }: Props) {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  filter === 'all' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Все
-              </button>
-              <button
-                onClick={() => setFilter('notification')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  filter === 'notification' 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Уведомления
-              </button>
-              <button
-                onClick={() => setFilter('excluded')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  filter === 'excluded' 
-                    ? 'bg-red-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Исключены
-              </button>
-              <button
-                onClick={() => setFilter('none')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  filter === 'none' 
-                    ? 'bg-gray-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Без уведомлений
-              </button>
+            
+            {/* Filter buttons */}
+            <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setFilter('all')}
+                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    filter === 'all' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Все
+                </button>
+                <button
+                  onClick={() => setFilter('notification')}
+                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    filter === 'notification' 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Уведомления
+                </button>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setFilter('excluded')}
+                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    filter === 'excluded' 
+                      ? 'bg-red-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Исключены
+                </button>
+                <button
+                  onClick={() => setFilter('none')}
+                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    filter === 'none' 
+                      ? 'bg-gray-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Без уведомлений
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -380,9 +392,9 @@ export function NotificationSettings({ onBack }: Props) {
 
       {/* Add Custom Sound Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-300">
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Добавить пользовательский звук</h3>
               <input
                 type="text"
@@ -395,7 +407,7 @@ export function NotificationSettings({ onBack }: Props) {
               <div className="flex gap-2">
                 <button
                   onClick={addCustomSound}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors active:scale-95"
                 >
                   Добавить
                 </button>
@@ -404,7 +416,7 @@ export function NotificationSettings({ onBack }: Props) {
                     setShowAddModal(false);
                     setCustomSound('');
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors active:scale-95"
                 >
                   Отмена
                 </button>
@@ -416,9 +428,9 @@ export function NotificationSettings({ onBack }: Props) {
 
       {/* YAMNet Sounds Modal */}
       {showYamnetModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] animate-in fade-in zoom-in duration-300 flex flex-col">
-            <div className="p-6 border-b">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] animate-in fade-in zoom-in duration-300 flex flex-col">
+            <div className="p-4 sm:p-6 border-b">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Выберите звук из YAMNet</h3>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -432,16 +444,16 @@ export function NotificationSettings({ onBack }: Props) {
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+              <div className="grid grid-cols-1 gap-2 max-h-96">
                 {filteredYamnetSounds.slice(0, 100).map((sound) => (
                   <button
                     key={sound}
                     onClick={() => addYamnetSound(sound)}
-                    className="flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+                    className="flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 active:scale-95"
                   >
-                    <span className="text-xl">{getSoundIcon(sound)}</span>
-                    <span className="text-sm font-medium text-gray-900">{sound}</span>
+                    <span className="text-lg sm:text-xl">{getSoundIcon(sound)}</span>
+                    <span className="text-sm font-medium text-gray-900 truncate">{sound}</span>
                   </button>
                 ))}
               </div>
@@ -451,13 +463,13 @@ export function NotificationSettings({ onBack }: Props) {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t">
+            <div className="p-4 sm:p-6 border-t">
               <button
                 onClick={() => {
                   setShowYamnetModal(false);
                   setYamnetSearch('');
                 }}
-                className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors active:scale-95"
               >
                 Отмена
               </button>

@@ -30,6 +30,8 @@ def reset_database():
                 ip_address TEXT NOT NULL,
                 mac_address TEXT UNIQUE NOT NULL,
                 model TEXT DEFAULT 'Unknown',
+                model_image_url TEXT,
+                microphone_info TEXT,
                 wifi_signal INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'offline',
                 last_seen TEXT,

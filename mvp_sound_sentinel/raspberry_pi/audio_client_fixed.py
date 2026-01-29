@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Sound Sentinel MVP - Raspberry Pi Audio Client
-Обновленная версия с поддержкой модели, микрофона и WiFi
+Sound Sentinel MVP - Raspberry Pi Audio Client (Fixed Version)
+Улучшенная версия с лучшей обработкой ошибок и выбором аудио устройств
 """
 
 import os
@@ -285,12 +285,17 @@ class AudioClient:
             return False
 
     def init_audio(self):
-        """Инициализация аудио потока"""
+        """Инициализация аудио потока с улучшенной обработкой ошибок"""
         try:
+            # Устанавливаем переменные окружения для уменьшения ошибок ALSA
+            os.environ['ALSA_PCM_CARD'] = '0'
+            os.environ['ALSA_PCM_DEVICE'] = '0'
+            
             self.audio = pyaudio.PyAudio()
 
             print("🎤 Доступные аудио устройства:")
             supported_devices = []
+            
             for i in range(self.audio.get_device_count()):
                 info = self.audio.get_device_info_by_index(i)
                 if info["maxInputChannels"] > 0:
@@ -311,8 +316,8 @@ class AudioClient:
                         test_stream.close()
                         supported_devices.append(i)
                         print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
-                    except:
-                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz")
+                    except Exception as e:
+                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz: {str(e)[:50]}...")
 
             if not supported_devices:
                 print("❌ Ни одно устройство не поддерживает 16000 Hz!")
@@ -320,15 +325,11 @@ class AudioClient:
                 return self.init_audio_fallback()
 
             # Пробуем устройства в порядке приоритета
-            priority_devices = []
-
-            # Сначала пробуем устройства, которые точно поддерживают 16000 Hz
-            # Имеем приоритет: pulse > default > sysdefault > остальные
             device_priority = {}
             for i in supported_devices:
                 info = self.audio.get_device_info_by_index(i)
                 name_lower = info["name"].lower()
-
+                
                 if "pulse" in name_lower:
                     device_priority[i] = 1
                 elif "default" in name_lower:
@@ -339,9 +340,7 @@ class AudioClient:
                     device_priority[i] = 4
 
             # Сортируем по приоритету
-            priority_devices = sorted(
-                device_priority.keys(), key=lambda x: device_priority[x]
-            )
+            priority_devices = sorted(device_priority.keys(), key=lambda x: device_priority[x])
 
             for device_index in priority_devices:
                 try:
@@ -484,10 +483,17 @@ class AudioClient:
                     chunk_size = CHUNK_SIZE
 
                 # Читаем аудио данные
-                audio_data = np.frombuffer(
-                    self.stream.read(chunk_size, exception_on_overflow=False),
-                    dtype=np.float32,
-                )
+                try:
+                    audio_data = np.frombuffer(
+                        self.stream.read(chunk_size, exception_on_overflow=False),
+                        dtype=np.float32,
+                    )
+                except Exception as e:
+                    print(f"❌ Ошибка чтения аудио: {e}")
+                    # Пробуем перезапустить поток
+                    if not self.restart_audio_stream():
+                        break
+                    continue
 
                 # Ресемплинг если используется другая частота
                 if hasattr(self, "fallback_sample_rate"):
@@ -503,6 +509,20 @@ class AudioClient:
 
         except Exception as e:
             print(f"❌ Ошибка в аудио цикле: {e}")
+
+    def restart_audio_stream(self):
+        """Перезапуск аудио потока при ошибках"""
+        try:
+            print("🔄 Перезапуск аудио потока...")
+            if self.stream:
+                self.stream.stop_stream()
+                self.stream.close()
+            
+            # Пробуем инициализировать заново
+            return self.init_audio()
+        except Exception as e:
+            print(f"❌ Ошибка перезапуска аудио: {e}")
+            return False
 
     def update_device_info(self):
         """Обновление информации об устройстве (WiFi сигнал и т.д.)"""
@@ -556,7 +576,6 @@ class AudioClient:
         try:
             while self.is_running:
                 import time
-
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\n🛑 Остановка клиента...")
@@ -567,11 +586,17 @@ class AudioClient:
         self.is_running = False
 
         if self.stream:
-            self.stream.stop_stream()
-            self.stream.close()
+            try:
+                self.stream.stop_stream()
+                self.stream.close()
+            except:
+                pass
 
         if self.audio:
-            self.audio.terminate()
+            try:
+                self.audio.terminate()
+            except:
+                pass
 
         print("✅ Клиент остановлен")
 
