@@ -267,18 +267,66 @@ def find_best_custom_match(embedding: List[float], device_id: str) -> dict:
         for sound in custom_sounds:
             sound_id, name, sound_type, embeddings_str, centroid_str, threshold = sound
 
+            print(f"🔍 Проверяем custom sound: {name} (type: {sound_type})")
+
             # Парсим centroid (если есть) или вычисляем из embeddings
-            if centroid_str:
-                centroid = json.loads(centroid_str)
-            else:
-                embeddings = json.loads(embeddings_str) if embeddings_str else []
-                if embeddings:
-                    centroid = np.mean(embeddings, axis=0).tolist()
+            try:
+                if centroid_str:
+                    centroid = json.loads(centroid_str)
+                    # Конвертируем numpy array в список если нужно
+                    if hasattr(centroid, "tolist"):
+                        centroid = centroid.tolist()
+                    elif isinstance(centroid, np.ndarray):
+                        centroid = centroid.tolist()
+                    # Если centroid это число (float), используем embeddings
+                    elif isinstance(centroid, (int, float)):
+                        print(
+                            f"⚠️ Centroid это число ({centroid}), используем embeddings"
+                        )
+                        embeddings = (
+                            json.loads(embeddings_str) if embeddings_str else []
+                        )
+                        if embeddings and len(embeddings) > 0:
+                            # Убедимся что embeddings это 2D массив
+                            if isinstance(embeddings[0], list):
+                                # embeddings это массив массивов [[...], [...], [...]]
+                                centroid = np.mean(embeddings, axis=0).tolist()
+                            else:
+                                # embeddings это плоский массив [...] - создаем из него centroid
+                                centroid = embeddings
+                            print(
+                                f"✅ Centroid вычислен из embeddings: {len(centroid)} элементов"
+                            )
+                        else:
+                            print(f"❌ Нет embeddings для звука {name}")
+                            continue
+                    print(
+                        f"✅ Centroid загружен: {len(centroid) if isinstance(centroid, list) else 'not array'}"
+                    )
                 else:
-                    continue
+                    embeddings = json.loads(embeddings_str) if embeddings_str else []
+                    if embeddings:
+                        centroid = np.mean(embeddings, axis=0).tolist()
+                        print(f"✅ Centroid вычислен: {len(centroid)} элементов")
+                    else:
+                        print(f"❌ Нет embeddings для звука {name}")
+                        continue
+            except Exception as e:
+                print(f"❌ Ошибка парсинга centroid для {name}: {e}")
+                continue
+
+            # Убедимся что centroid это список чисел
+            if not isinstance(centroid, list):
+                print(f"❌ Centroid не является списком для {name}: {type(centroid)}")
+                continue
 
             # Вычисляем схожесть
-            similarity = cosine_similarity(embedding, centroid)
+            try:
+                similarity = cosine_similarity(embedding, centroid)
+                print(f"📊 Схожесть с {name}: {similarity:.3f}")
+            except Exception as e:
+                print(f"❌ Ошибка вычисления схожести с {name}: {e}")
+                continue
 
             if similarity > best_similarity:
                 best_similarity = similarity
@@ -289,6 +337,7 @@ def find_best_custom_match(embedding: List[float], device_id: str) -> dict:
                     "similarity": similarity,
                     "threshold": threshold or 0.75,
                 }
+                print(f"🎯 Новый лучший матч: {name} (схожесть: {similarity:.3f})")
 
         return best_match or {}
 
@@ -495,16 +544,23 @@ async def detect_sound_endpoint(audio: AudioData):
     if model is None:
         raise HTTPException(status_code=503, detail="Модель не загружена")
 
+    print(f"🎵 Получен аудио запрос от устройства: {audio.device_id}")
+
     # 1. Извлекаем YAMNet embeddings из аудио
     embedding = extract_embeddings(audio.audio_data)
 
     if not embedding:
         raise HTTPException(status_code=400, detail="Не удалось извлечь embeddings")
 
+    print(f"📊 Embeddings извлечены: {len(embedding)} элементов")
+
     detection_id = str(uuid.uuid4())
 
     # 2. Проверяем custom sounds через embeddings
+    print(f"🔍 Ищем custom matches для устройства: {audio.device_id}")
     custom_match = find_best_custom_match(embedding, audio.device_id)
+
+    print(f"🎯 Custom match результат: {custom_match}")
 
     final_result = {
         "detection_id": detection_id,

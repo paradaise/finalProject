@@ -15,6 +15,20 @@ import pyaudio
 import numpy as np
 from datetime import datetime
 
+# Подавляем ALSA и PortAudio ошибки
+os.environ["ALSA_PCM_CARD"] = "0"
+os.environ["ALSA_PCM_DEVICE"] = "0"
+
+# Перенаправляем stderr для подавления ALSA ошибок
+import logging
+
+logging.getLogger().setLevel(logging.ERROR)
+
+# Игнорируем предупреждения ALSA
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
+
 # Конфигурация
 API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
 DEVICE_NAME = "Raspberry Pi Monitor"
@@ -304,8 +318,21 @@ class AudioClient:
             # Устанавливаем переменные окружения для уменьшения ошибок ALSA
             os.environ["ALSA_PCM_CARD"] = "0"
             os.environ["ALSA_PCM_DEVICE"] = "0"
+            os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
+            os.environ["ALSA_DEBUG_LEVEL"] = "0"
 
-            self.audio = pyaudio.PyAudio()
+            # Временно перенаправляем stderr для подавления ошибок PyAudio
+            import contextlib
+            import io
+
+            stderr_backup = sys.stderr
+            sys.stderr = io.StringIO()
+
+            try:
+                self.audio = pyaudio.PyAudio()
+            finally:
+                # Восстанавливаем stderr
+                sys.stderr = stderr_backup
 
             print("🎤 Доступные аудио устройства:")
             supported_devices = []
@@ -319,21 +346,28 @@ class AudioClient:
 
                     # Проверяем поддерживаемые частоты дискретизации
                     try:
-                        test_stream = self.audio.open(
-                            format=FORMAT,
-                            channels=CHANNELS,
-                            rate=SAMPLE_RATE,
-                            input=True,
-                            input_device_index=i,
-                            frames_per_buffer=1024,
-                        )
-                        test_stream.close()
-                        supported_devices.append(i)
-                        print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
+                        # Подавляем ошибки при открытии потока
+                        stderr_backup = sys.stderr
+                        sys.stderr = io.StringIO()
+
+                        try:
+                            test_stream = self.audio.open(
+                                format=FORMAT,
+                                channels=CHANNELS,
+                                rate=SAMPLE_RATE,
+                                input=True,
+                                input_device_index=i,
+                                frames_per_buffer=1024,
+                            )
+                            test_stream.close()
+                            supported_devices.append(i)
+                            print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
+                        finally:
+                            sys.stderr = stderr_backup
                     except Exception as e:
-                        print(
-                            f"      ❌ Не поддерживает {SAMPLE_RATE} Hz: {str(e)[:50]}..."
-                        )
+                        # Показываем только краткую ошибку
+                        error_msg = str(e)[:50] + "..." if len(str(e)) > 50 else str(e)
+                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz: {error_msg}")
 
             if not supported_devices:
                 print("❌ Ни одно устройство не поддерживает 16000 Hz!")

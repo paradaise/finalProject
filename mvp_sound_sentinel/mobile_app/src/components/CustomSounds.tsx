@@ -11,6 +11,8 @@ interface Props {
 }
 
 export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Props) {
+  console.log('CustomSounds props:', { sounds, selectedDeviceId });
+  
   const excludedSounds = sounds.filter(s => s.sound_type === 'excluded');
   const specificSounds = sounds.filter(s => s.sound_type === 'specific');
   
@@ -40,25 +42,59 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
   };
 
   const handleRecordComplete = (audioData: Float32Array) => {
-    setRecordings(prev => [...prev, audioData]);
+    console.log('handleRecordComplete called:', { 
+      currentRecordingsLength: recordings.length,
+      audioDataLength: audioData.length 
+    });
+    
+    if (recordings.length >= 3) {
+      alert('Максимум 3 записи достигнуто');
+      return;
+    }
+    
+    const newRecordings = [...recordings, audioData];
+    console.log('New recordings length:', newRecordings.length);
+    setRecordings(newRecordings);
     
     // Если записали 3 раза, автоматически добавляем звук
-    if (recordings.length >= 2) {
-      handleAddSound();
+    if (newRecordings.length >= 3) {
+      setTimeout(() => handleAddSound(), 100); // Небольшая задержка для обновления состояния
     }
   };
 
   const handleAddSound = async () => {
-    if (!soundName.trim() || recordings.length === 0 || !selectedDeviceId) {
-      alert('Заполните название звука и запишите его хотя бы 1 раз');
+    console.log('handleAddSound called:', { 
+      soundName: soundName.trim(), 
+      recordingsLength: recordings.length, 
+      selectedDeviceId,
+      recordings: recordings 
+    });
+    
+    if (!soundName.trim()) {
+      alert('Заполните название звука');
+      return;
+    }
+    
+    if (recordings.length === 0) {
+      alert('Запишите звук хотя бы 1 раз');
+      return;
+    }
+    
+    if (!selectedDeviceId) {
+      alert('Устройство не выбрано');
       return;
     }
 
     try {
-      // Усредняем MFCC признаки из всех записей
-      const mfccFeatures = await extractAverageMFCC(recordings);
-      
-      await apiClient.addCustomSound(soundName, soundType, mfccFeatures, selectedDeviceId);
+      // Отправляем аудио записи для тренировки на бэкенде
+      // Бэкенд сам извлечет YAMNet embeddings и вычислит centroid
+      await apiClient.trainCustomSound({
+        name: soundName,
+        sound_type: soundType,
+        device_id: selectedDeviceId,
+        audio_recordings: recordings.map(r => Array.from(r)), // Конвертируем Float32Array в массив
+        threshold: 0.75
+      });
       
       // Сброс формы
       setSoundName('');
@@ -71,34 +107,6 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
       console.error('Error adding sound:', error);
       alert('Ошибка добавления звука');
     }
-  };
-
-  const extractAverageMFCC = async (audioBuffers: Float32Array[]): Promise<number[]> => {
-    // Простая реализация - усредняем значения аудио
-    // В реальном приложении здесь должна быть полноценная MFCC экстракция
-    const allFeatures: number[] = [];
-    
-    for (const audioBuffer of audioBuffers) {
-      // Усредняем значения аудио как простые признаки
-      const mean = audioBuffer.reduce((sum, val) => sum + val, 0) / audioBuffer.length;
-      const std = Math.sqrt(audioBuffer.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / audioBuffer.length);
-      
-      allFeatures.push(mean, std);
-    }
-    
-    // Возвращаем усредненные признаки
-    const featureSize = 2; // mean и std
-    const averagedFeatures: number[] = [];
-    
-    for (let i = 0; i < featureSize; i++) {
-      let sum = 0;
-      for (let j = 0; j < allFeatures.length; j += featureSize) {
-        sum += allFeatures[j + i] || 0;
-      }
-      averagedFeatures.push(sum / audioBuffers.length);
-    }
-    
-    return averagedFeatures;
   };
 
   return (
@@ -258,13 +266,24 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Запись звука ({recordings.length + 1}/3)
+                  Запись звука ({recordings.length}/3)
                 </label>
                 <AudioRecorder
                   onRecordComplete={handleRecordComplete}
                   isRecording={isRecording}
                   setIsRecording={setIsRecording}
+                  disabled={recordings.length >= 3}
                 />
+                {recordings.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Записано: {recordings.length} из 3. {recordings.length >= 3 ? 'Готово к сохранению!' : `Запишите еще ${3 - recordings.length} раз(а)`}
+                  </p>
+                )}
+                {recordings.length >= 3 && (
+                  <p className="text-xs text-green-600 mt-1 font-medium">
+                    Максимум записей достигнут. Нажмите "Добавить звук" для сохранения.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2">

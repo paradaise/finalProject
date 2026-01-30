@@ -90,9 +90,17 @@ export function NotificationSettings({ onBack }: Props) {
       // Добавляем пользовательские звуки
       settings.custom_sounds.forEach((customSound: {name: string, type: string}) => {
         if (!processedSounds.has(customSound.name)) {
+          // 'specific' = важные звуки (уведомления), 'excluded' = исключенные
+          const notificationType = customSound.type === 'specific' ? 'notification' : 'excluded';
+          console.log('Custom sound:', { 
+            name: customSound.name, 
+            originalType: customSound.type, 
+            notificationType 
+          });
+          
           sounds.push({
             name: customSound.name,
-            type: customSound.type === 'notification' ? 'notification' : 'excluded',
+            type: notificationType,
             icon: getSoundIcon(customSound.name),
             isCustom: true
           });

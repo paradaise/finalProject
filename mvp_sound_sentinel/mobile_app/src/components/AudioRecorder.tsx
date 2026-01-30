@@ -1,18 +1,20 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 
 interface Props {
   onRecordComplete: (audioData: Float32Array) => void;
   isRecording: boolean;
   setIsRecording: (recording: boolean) => void;
+  disabled?: boolean;
 }
 
-export function AudioRecorder({ onRecordComplete, isRecording, setIsRecording }: Props) {
+export function AudioRecorder({ onRecordComplete, isRecording, setIsRecording, disabled = false }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
   const startRecording = async () => {
+    if (disabled) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
@@ -92,12 +94,12 @@ export function AudioRecorder({ onRecordComplete, isRecording, setIsRecording }:
     <div className="flex flex-col items-center gap-4">
       <button
         onClick={isRecording ? stopRecording : startRecording}
-        disabled={isProcessing}
+        disabled={isProcessing || disabled}
         className={`p-6 rounded-full transition-all ${
           isRecording 
             ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
             : 'bg-blue-500 hover:bg-blue-600'
-        } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+        } ${isProcessing || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {isProcessing ? (
           <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -110,11 +112,16 @@ export function AudioRecorder({ onRecordComplete, isRecording, setIsRecording }:
       
       <div className="text-center">
         <p className="text-sm font-medium text-gray-700">
-          {isProcessing ? 'Обработка...' : isRecording ? 'Запись...' : 'Нажмите для записи'}
+          {isProcessing ? 'Обработка...' : isRecording ? 'Запись...' : disabled ? 'Лимит записей достигнут' : 'Нажмите для записи'}
         </p>
         {isRecording && (
           <p className="text-xs text-gray-500 mt-1">
             Записывайте звук 2-3 раза для лучшего распознавания
+          </p>
+        )}
+        {disabled && (
+          <p className="text-xs text-green-600 mt-1">
+            Максимум 3 записи достигнут
           </p>
         )}
       </div>

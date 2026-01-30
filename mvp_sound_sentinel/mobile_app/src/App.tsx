@@ -99,6 +99,17 @@ export default function App() {
     setCurrentScreen('device-detail');
   };
 
+  const handleCustomSounds = () => {
+    // Если есть только одно устройство, выбираем его автоматически
+    if (devices.length === 1) {
+      setSelectedDeviceId(devices[0].id);
+    } else if (devices.length > 1 && !selectedDeviceId) {
+      // Если устройств несколько и ничего не выбрано, выбираем первое
+      setSelectedDeviceId(devices[0].id);
+    }
+    setCurrentScreen('custom-sounds');
+  };
+
   const handleBack = () => {
     setSelectedDeviceId(null);
     setCurrentScreen('devices');
@@ -174,7 +185,7 @@ export default function App() {
           devices={devices}
           detections={detections}
           onSelectDevice={handleSelectDevice}
-          onCustomSounds={() => setCurrentScreen('custom-sounds')}
+          onCustomSounds={handleCustomSounds}
           onNotificationSettings={() => setCurrentScreen('notification-settings')}
         />
       )}
