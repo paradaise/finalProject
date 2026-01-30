@@ -71,6 +71,16 @@ class CustomSound(BaseModel):
     device_id: str
 
 
+class NotificationSound(BaseModel):
+    sound_name: str
+    device_id: str
+
+
+class ExcludedSound(BaseModel):
+    sound_name: str
+    device_id: str
+
+
 # Инициализация базы данных
 def init_database():
     """Создание таблиц в SQLite"""
@@ -127,6 +137,34 @@ def init_database():
     """
     )
 
+    # Таблица важных звуков для уведомлений
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notification_sounds (
+            id TEXT PRIMARY KEY,
+            sound_name TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (device_id) REFERENCES devices (id),
+            UNIQUE(sound_name, device_id)
+        )
+    """
+    )
+
+    # Таблица исключенных звуков
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS excluded_sounds (
+            id TEXT PRIMARY KEY,
+            sound_name TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (device_id) REFERENCES devices (id),
+            UNIQUE(sound_name, device_id)
+        )
+    """
+    )
+
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована")
@@ -175,6 +213,57 @@ def extract_mfcc(audio_data: List[float], sample_rate: int = 16000) -> List[floa
     except Exception as e:
         print(f"❌ Ошибка извлечения MFCC: {e}")
         return []
+
+
+# Проверка настроек уведомлений
+def should_send_notification(device_id: str, sound_type: str) -> bool:
+    """Проверяет нужно ли отправлять уведомление для данного звука"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Проверяем исключенные звуки
+    cursor.execute(
+        """
+        SELECT COUNT(*) FROM excluded_sounds 
+        WHERE device_id = ? AND LOWER(sound_name) = LOWER(?)
+    """,
+        (device_id, sound_type),
+    )
+
+    if cursor.fetchone()[0] > 0:
+        conn.close()
+        return False
+
+    # Проверяем важные звуки
+    cursor.execute(
+        """
+        SELECT COUNT(*) FROM notification_sounds 
+        WHERE device_id = ? AND LOWER(sound_name) = LOWER(?)
+    """,
+        (device_id, sound_type),
+    )
+
+    if cursor.fetchone()[0] > 0:
+        conn.close()
+        return True
+
+    # Проверяем пользовательские звуки
+    cursor.execute(
+        """
+        SELECT sound_type FROM custom_sounds 
+        WHERE device_id = ? AND LOWER(name) = LOWER(?)
+    """,
+        (device_id, sound_type),
+    )
+
+    custom_sound = cursor.fetchone()
+    conn.close()
+
+    if custom_sound:
+        return custom_sound[0] == "notification"
+
+    # По умолчанию не отправляем уведомления
+    return False
 
 
 # Детекция звука с помощью YAMNet
@@ -357,7 +446,16 @@ async def detect_sound_endpoint(audio: AudioData):
     conn.commit()
     conn.close()
 
-    # Рассылка в реальном времени
+    # Рассылка в реальном времени только если нужно уведомление
+    should_notify = should_send_notification(
+        audio.device_id, top_prediction["sound_type"]
+    )
+
+    # Логируем для отладки
+    print(
+        f"🔊 Detection: {top_prediction['sound_type']} - {top_prediction['confidence']*100:.2f}% - should_notify: {should_notify}"
+    )
+
     await broadcast_to_websockets(
         {
             "type": "sound_detected",
@@ -366,6 +464,7 @@ async def detect_sound_endpoint(audio: AudioData):
             "sound_type": top_prediction["sound_type"],
             "confidence": top_prediction["confidence"],
             "timestamp": datetime.now().isoformat(),
+            "should_notify": should_notify,
         }
     )
 
@@ -1209,6 +1308,203 @@ async def delete_custom_sound(sound_id: str):
     conn.close()
 
     return {"status": "deleted"}
+
+
+# API для настроек уведомлений
+@app.post("/notification_sounds")
+async def add_notification_sound(sound: NotificationSound):
+    """Добавление важного звука для уведомлений"""
+    sound_id = str(uuid.uuid4())
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Сначала удаляем из исключенных если есть
+        cursor.execute(
+            "DELETE FROM excluded_sounds WHERE device_id = ? AND LOWER(sound_name) = LOWER(?)",
+            (sound.device_id, sound.sound_name),
+        )
+
+        # Затем добавляем в важные
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO notification_sounds (id, sound_name, device_id)
+            VALUES (?, ?, ?)
+        """,
+            (sound_id, sound.sound_name, sound.device_id),
+        )
+        conn.commit()
+        return {"sound_id": sound_id, "status": "added"}
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.get("/notification_sounds/{device_id}")
+async def get_notification_sounds(device_id: str):
+    """Получение важных звуков для устройства"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, sound_name, device_id, created_at
+        FROM notification_sounds
+        WHERE device_id = ?
+        ORDER BY created_at DESC
+    """,
+        (device_id,),
+    )
+
+    sounds = []
+    for row in cursor.fetchall():
+        sounds.append(
+            {
+                "id": row[0],
+                "sound_name": row[1],
+                "device_id": row[2],
+                "created_at": row[3],
+            }
+        )
+
+    conn.close()
+    return sounds
+
+
+@app.delete("/notification_sounds/{sound_id}")
+async def delete_notification_sound(sound_id: str):
+    """Удаление важного звука"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM notification_sounds WHERE id = ?", (sound_id,))
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "deleted"}
+
+
+@app.post("/excluded_sounds")
+async def add_excluded_sound(sound: ExcludedSound):
+    """Добавление исключенного звука"""
+    sound_id = str(uuid.uuid4())
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Сначала удаляем из важных если есть
+        cursor.execute(
+            "DELETE FROM notification_sounds WHERE device_id = ? AND LOWER(sound_name) = LOWER(?)",
+            (sound.device_id, sound.sound_name),
+        )
+
+        # Затем добавляем в исключенные
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO excluded_sounds (id, sound_name, device_id)
+            VALUES (?, ?, ?)
+        """,
+            (sound_id, sound.sound_name, sound.device_id),
+        )
+        conn.commit()
+        return {"sound_id": sound_id, "status": "added"}
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.get("/excluded_sounds/{device_id}")
+async def get_excluded_sounds(device_id: str):
+    """Получение исключенных звуков для устройства"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, sound_name, device_id, created_at
+        FROM excluded_sounds
+        WHERE device_id = ?
+        ORDER BY created_at DESC
+    """,
+        (device_id,),
+    )
+
+    sounds = []
+    for row in cursor.fetchall():
+        sounds.append(
+            {
+                "id": row[0],
+                "sound_name": row[1],
+                "device_id": row[2],
+                "created_at": row[3],
+            }
+        )
+
+    conn.close()
+    return sounds
+
+
+@app.delete("/excluded_sounds/{sound_id}")
+async def delete_excluded_sound(sound_id: str):
+    """Удаление исключенного звука"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM excluded_sounds WHERE id = ?", (sound_id,))
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "deleted"}
+
+
+@app.get("/notification_settings/{device_id}")
+async def get_notification_settings(device_id: str):
+    """Получение всех настроек уведомлений для устройства"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Получаем важные звуки
+    cursor.execute(
+        """
+        SELECT sound_name FROM notification_sounds WHERE device_id = ?
+    """,
+        (device_id,),
+    )
+    notification_sounds = [row[0] for row in cursor.fetchall()]
+
+    # Получаем исключенные звуки
+    cursor.execute(
+        """
+        SELECT sound_name FROM excluded_sounds WHERE device_id = ?
+    """,
+        (device_id,),
+    )
+    excluded_sounds = [row[0] for row in cursor.fetchall()]
+
+    # Получаем пользовательские звуки
+    cursor.execute(
+        """
+        SELECT name, sound_type FROM custom_sounds WHERE device_id = ?
+    """,
+        (device_id,),
+    )
+    custom_sounds = [{"name": row[0], "type": row[1]} for row in cursor.fetchall()]
+
+    conn.close()
+
+    return {
+        "notification_sounds": notification_sounds,
+        "excluded_sounds": excluded_sounds,
+        "custom_sounds": custom_sounds,
+    }
 
 
 @app.get("/health")

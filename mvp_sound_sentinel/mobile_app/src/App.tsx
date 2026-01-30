@@ -24,7 +24,7 @@ export default function App() {
     
     // WebSocket для реального времени
     const ws = apiClient.connectWebSocket((data) => {
-      console.log('WebSocket received:', data);
+      console.log('📡 WebSocket received:', data);
       
       if (data.type === 'device_registered') {
         setDevices(prev => [...prev, {
@@ -35,6 +35,12 @@ export default function App() {
           last_seen: new Date().toISOString()
         }]);
       } else if (data.type === 'sound_detected') {
+        console.log('🔊 Sound detected in App:', {
+          sound_type: data.sound_type,
+          confidence: data.confidence,
+          should_notify: data.should_notify
+        });
+        
         setDetections(prev => ({
           ...prev,
           [data.device_id]: [
@@ -49,6 +55,7 @@ export default function App() {
         }));
         
         // Отправляем событие для уведомлений
+        console.log('📤 Dispatching soundDetected event with:', data);
         window.dispatchEvent(new CustomEvent('soundDetected', { detail: data }));
       }
     });
@@ -143,10 +150,22 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Уведомления */}
       <ImprovedNotificationManager
-        customSounds={detections}
         onSoundDetected={(data: any) => {
-          // Обработка звуковых событий
-          console.log('Sound detected:', data);
+          // Обработка звуковых событий для обновления детекций
+          if (data.type === 'sound_detected') {
+            setDetections(prev => ({
+              ...prev,
+              [data.device_id]: [
+                {
+                  id: data.detection_id,
+                  sound_type: data.sound_type,
+                  confidence: data.confidence,
+                  timestamp: data.timestamp
+                },
+                ...(prev[data.device_id] || [])
+              ].slice(0, 50)
+            }));
+          }
         }}
       />
       

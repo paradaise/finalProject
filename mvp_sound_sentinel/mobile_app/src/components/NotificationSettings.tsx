@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, Bell, BellOff, Volume2, Settings, Filter } from 'lucide-react';
+import { Search, Plus, X, Bell, BellOff, Volume2, Settings, Filter, Trash2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 interface NotificationSound {
   name: string;
   type: 'notification' | 'excluded' | 'none';
   icon: string;
+  id?: string;
+  isCustom?: boolean;
 }
 
 interface Props {
@@ -22,11 +24,26 @@ export function NotificationSettings({ onBack }: Props) {
   const [customSound, setCustomSound] = useState('');
   const [showYamnetModal, setShowYamnetModal] = useState(false);
   const [yamnetSearch, setYamnetSearch] = useState('');
+  const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
+  const [customSounds, setCustomSounds] = useState<{name: string, type: string}[]>([]);
 
   // Загрузка всех звуков YAMNet
   useEffect(() => {
-    loadYamnetSounds();
-    loadNotificationSettings();
+    // Получаем ID первого устройства (для MVP)
+    const loadDeviceId = async () => {
+      try {
+        const devices = await apiClient.getDevices();
+        if (devices.length > 0) {
+          setCurrentDeviceId(devices[0].id);
+          await loadYamnetSounds();
+          await loadNotificationSettings(devices[0].id);
+        }
+      } catch (error) {
+        console.error('Error loading device ID:', error);
+      }
+    };
+    
+    loadDeviceId();
   }, []);
 
   const loadYamnetSounds = async () => {
@@ -38,16 +55,53 @@ export function NotificationSettings({ onBack }: Props) {
     }
   };
 
-  const loadNotificationSettings = async () => {
+  const loadNotificationSettings = async (deviceId: string) => {
     try {
-      // Здесь будет загрузка настроек из БД
-      // Пока используем временные данные
-      const settings: NotificationSound[] = allSounds.map(sound => ({
-        name: sound,
-        type: getDefaultNotificationType(sound),
-        icon: getSoundIcon(sound)
-      }));
-      setNotificationSounds(settings);
+      // Загружаем настройки уведомлений из БД
+      const settings = await apiClient.getNotificationSettings(deviceId);
+      
+      const sounds: NotificationSound[] = [];
+      const processedSounds = new Set<string>(); // Для отслеживания уникальных звуков
+      
+      // Добавляем важные звуки
+      settings.notification_sounds.forEach((soundName: string) => {
+        if (!processedSounds.has(soundName)) {
+          sounds.push({
+            name: soundName,
+            type: 'notification',
+            icon: getSoundIcon(soundName)
+          });
+          processedSounds.add(soundName);
+        }
+      });
+      
+      // Добавляем исключенные звуки
+      settings.excluded_sounds.forEach((soundName: string) => {
+        if (!processedSounds.has(soundName)) {
+          sounds.push({
+            name: soundName,
+            type: 'excluded',
+            icon: getSoundIcon(soundName)
+          });
+          processedSounds.add(soundName);
+        }
+      });
+      
+      // Добавляем пользовательские звуки
+      settings.custom_sounds.forEach((customSound: {name: string, type: string}) => {
+        if (!processedSounds.has(customSound.name)) {
+          sounds.push({
+            name: customSound.name,
+            type: customSound.type === 'notification' ? 'notification' : 'excluded',
+            icon: getSoundIcon(customSound.name),
+            isCustom: true
+          });
+          processedSounds.add(customSound.name);
+        }
+      });
+      
+      setCustomSounds(settings.custom_sounds);
+      setNotificationSounds(sounds);
       setLoading(false);
     } catch (error) {
       console.error('Error loading notification settings:', error);
@@ -108,22 +162,53 @@ export function NotificationSettings({ onBack }: Props) {
     return matchesSearch && matchesFilter;
   });
 
-  const toggleNotificationType = (soundName: string) => {
-    setNotificationSounds(prev => prev.map(sound => {
-      if (sound.name === soundName) {
-        const types: ('notification' | 'excluded' | 'none')[] = ['notification', 'excluded', 'none'];
-        const currentIndex = types.indexOf(sound.type);
-        const nextIndex = (currentIndex + 1) % types.length;
-        return { ...sound, type: types[nextIndex] };
+  const toggleNotificationType = async (soundName: string) => {
+    if (!currentDeviceId) return;
+    
+    const sound = notificationSounds.find(s => s.name === soundName);
+    if (!sound || sound.isCustom) return; // Нельзя изменять пользовательские звуки
+    
+    try {
+      // Просто добавляем в новую категорию, не удаляя из старой
+      // База данных обработает дубликаты через UNIQUE constraint
+      if (sound.type === 'notification') {
+        await apiClient.addExcludedSound(soundName, currentDeviceId);
+      } else {
+        await apiClient.addNotificationSound(soundName, currentDeviceId);
       }
-      return sound;
-    }));
+      
+      // Обновляем локальное состояние
+      setNotificationSounds(prev => prev.map(s => {
+        if (s.name === soundName && !s.isCustom) {
+          const types: ('notification' | 'excluded')[] = ['notification', 'excluded'];
+          const currentIndex = types.indexOf(s.type as 'notification' | 'excluded');
+          const nextIndex = (currentIndex + 1) % types.length;
+          return { ...s, type: types[nextIndex] };
+        }
+        return s;
+      }));
+    } catch (error) {
+      console.error('Error toggling notification type:', error);
+      // Если звук уже существует, просто обновляем локальное состояние
+      if (error instanceof Error && error.message.includes('already exists')) {
+        setNotificationSounds(prev => prev.map(s => {
+          if (s.name === soundName && !s.isCustom) {
+            const types: ('notification' | 'excluded')[] = ['notification', 'excluded'];
+            const currentIndex = types.indexOf(s.type as 'notification' | 'excluded');
+            const nextIndex = (currentIndex + 1) % types.length;
+            return { ...s, type: types[nextIndex] };
+          }
+          return s;
+        }));
+      } else {
+        alert('Ошибка изменения типа уведомления');
+      }
+    }
   };
 
   const saveSettings = async () => {
     try {
-      // Здесь будет сохранение в БД
-      console.log('Saving notification settings:', notificationSounds);
+      // Настройки уже сохраняются в реальном времени при добавлении/удалении
       alert('Настройки уведомлений сохранены!');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -132,11 +217,12 @@ export function NotificationSettings({ onBack }: Props) {
   };
 
   const addCustomSound = () => {
-    if (customSound.trim()) {
+    if (customSound.trim() && currentDeviceId) {
       const newSound: NotificationSound = {
         name: customSound.trim(),
         type: 'notification',
-        icon: getSoundIcon(customSound.trim())
+        icon: getSoundIcon(customSound.trim()),
+        isCustom: true
       };
       setNotificationSounds(prev => [...prev, newSound]);
       setCustomSound('');
@@ -144,18 +230,57 @@ export function NotificationSettings({ onBack }: Props) {
     }
   };
 
-  const addYamnetSound = (soundName: string) => {
-    const existingSound = notificationSounds.find(s => s.name.toLowerCase() === soundName.toLowerCase());
-    if (!existingSound) {
+  const addYamnetSound = async (soundName: string) => {
+    if (!currentDeviceId) return;
+    
+    try {
+      // Добавляем как важный звук по умолчанию
+      await apiClient.addNotificationSound(soundName, currentDeviceId);
+      
       const newSound: NotificationSound = {
         name: soundName,
         type: 'notification',
         icon: getSoundIcon(soundName)
       };
       setNotificationSounds(prev => [...prev, newSound]);
+      setShowYamnetModal(false);
+      setYamnetSearch('');
+    } catch (error) {
+      console.error('Error adding sound:', error);
+      alert('Ошибка добавления звука');
     }
-    setShowYamnetModal(false);
-    setYamnetSearch('');
+  };
+
+  const deleteSound = async (soundName: string) => {
+    if (!currentDeviceId) return;
+    
+    if (!window.confirm(`Удалить звук "${soundName}" из настроек уведомлений?`)) {
+      return;
+    }
+    
+    try {
+      const sound = notificationSounds.find(s => s.name === soundName);
+      if (!sound || sound.isCustom) return; // Нельзя удалять пользовательские звуки здесь
+      
+      // Удаляем из соответствующей таблицы
+      if (sound.type === 'notification') {
+        const notificationSound = notificationSounds.find(s => s.name === soundName && s.type === 'notification');
+        if (notificationSound?.id) {
+          await apiClient.deleteNotificationSound(notificationSound.id);
+        }
+      } else if (sound.type === 'excluded') {
+        const excludedSound = notificationSounds.find(s => s.name === soundName && s.type === 'excluded');
+        if (excludedSound?.id) {
+          await apiClient.deleteExcludedSound(excludedSound.id);
+        }
+      }
+      
+      // Обновляем локальное состояние
+      setNotificationSounds(prev => prev.filter(s => s.name !== soundName));
+    } catch (error) {
+      console.error('Error deleting sound:', error);
+      alert('Ошибка удаления звука');
+    }
   };
 
   const filteredYamnetSounds = allSounds.filter(sound => 
@@ -227,14 +352,6 @@ export function NotificationSettings({ onBack }: Props) {
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Добавить из YAMNet</span>
                 <span className="sm:hidden">YAMNet</span>
-              </button>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex-1 sm:flex-none px-3 py-2 h-10 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить свой звук</span>
-                <span className="sm:hidden">Свой звук</span>
               </button>
               <button
                 onClick={saveSettings}
@@ -320,16 +437,6 @@ export function NotificationSettings({ onBack }: Props) {
                 >
                   Исключены
                 </button>
-                <button
-                  onClick={() => setFilter('none')}
-                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
-                    filter === 'none' 
-                      ? 'bg-gray-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Без уведомлений
-                </button>
               </div>
             </div>
           </div>
@@ -346,9 +453,9 @@ export function NotificationSettings({ onBack }: Props) {
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {filteredSounds.map((sound) => (
+                {filteredSounds.map((sound, index) => (
                   <div
-                    key={sound.name}
+                    key={`${sound.name}-${index}`}
                     className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${getNotificationColor(sound.type)}`}
                     onClick={() => toggleNotificationType(sound.name)}
                   >
@@ -362,8 +469,20 @@ export function NotificationSettings({ onBack }: Props) {
                       </div>
                       <div className="flex items-center gap-2">
                         {getNotificationIcon(sound.type)}
+                        {!sound.isCustom && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteSound(sound.name);
+                            }}
+                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group"
+                            title="Удалить звук"
+                          >
+                            <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-colors" />
+                          </button>
+                        )}
                         <div className="text-xs text-gray-500">
-                          Кликните для изменения
+                          {sound.isCustom ? 'Пользовательский' : 'Кликните для изменения'}
                         </div>
                       </div>
                     </div>
@@ -445,15 +564,15 @@ export function NotificationSettings({ onBack }: Props) {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-              <div className="grid grid-cols-1 gap-2 max-h-96">
-                {filteredYamnetSounds.slice(0, 100).map((sound) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96">
+                {filteredYamnetSounds.map((sound) => (
                   <button
                     key={sound}
                     onClick={() => addYamnetSound(sound)}
-                    className="flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 active:scale-95"
+                    className="flex items-center gap-2 p-2 text-left hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 active:scale-95"
                   >
                     <span className="text-lg sm:text-xl">{getSoundIcon(sound)}</span>
-                    <span className="text-sm font-medium text-gray-900 truncate">{sound}</span>
+                    <span className="text-xs sm:text-sm font-medium text-gray-900 truncate">{sound}</span>
                   </button>
                 ))}
               </div>

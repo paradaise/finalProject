@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://192.168.0.61:8000';
+const API_BASE_URL = 'http://localhost:8000';
 
 export interface Device {
   id: string;
@@ -146,6 +146,47 @@ class ApiClient {
   // Получение всех звуков YAMNet
   async getYamnetSounds(): Promise<any> {
     return this.request('/yamnet_sounds');
+  }
+
+  // Настройки уведомлений
+  async getNotificationSettings(deviceId: string): Promise<{
+    notification_sounds: string[];
+    excluded_sounds: string[];
+    custom_sounds: {name: string, type: string}[];
+  }> {
+    return this.request(`/notification_settings/${deviceId}`);
+  }
+
+  async addNotificationSound(soundName: string, deviceId: string): Promise<any> {
+    return this.request('/notification_sounds', {
+      method: 'POST',
+      body: JSON.stringify({
+        sound_name: soundName,
+        device_id: deviceId,
+      }),
+    });
+  }
+
+  async addExcludedSound(soundName: string, deviceId: string): Promise<any> {
+    return this.request('/excluded_sounds', {
+      method: 'POST',
+      body: JSON.stringify({
+        sound_name: soundName,
+        device_id: deviceId,
+      }),
+    });
+  }
+
+  async deleteNotificationSound(soundId: string): Promise<any> {
+    return this.request(`/notification_sounds/${soundId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteExcludedSound(soundId: string): Promise<any> {
+    return this.request(`/excluded_sounds/${soundId}`, {
+      method: 'DELETE',
+    });
   }
 }
 
