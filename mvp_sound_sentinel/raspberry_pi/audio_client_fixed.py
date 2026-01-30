@@ -21,6 +21,7 @@ os.environ["ALSA_PCM_DEVICE"] = "0"
 os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
 os.environ["ALSA_DEBUG_LEVEL"] = "0"
 os.environ["PYTHONWARNINGS"] = "ignore"
+os.environ["ALSA_CONFIG_PATH"] = "/dev/null"
 
 # Подавляем все предупреждения и ошибки
 import logging
@@ -30,11 +31,18 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Перенаправляем stderr в /dev/null для полного подавления ошибок
+# Полное подавление stderr через файловый дескриптор
 import io
 import contextlib
+import fcntl
+import os
 
-sys.stderr = io.StringIO()
+# Создаем null файл для stderr
+try:
+    sys.stderr.close()
+    sys.stderr = open(os.devnull, "w")
+except:
+    pass
 
 # Конфигурация
 API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
@@ -492,7 +500,7 @@ class AudioClient:
             response = self.session.post(
                 f"{API_SERVER_URL}/detect_sound",
                 json=payload,
-                timeout=10,
+                timeout=30,  # Увеличиваем таймаут
             )
 
             if response.status_code == 200:
@@ -506,8 +514,29 @@ class AudioClient:
             else:
                 print(f"❌ Ошибка детекции: {response.status_code}")
 
+        except requests.exceptions.Timeout:
+            print(f"⏰ Таймаут отправки аудио, пробую еще раз...")
+            # Пробуем еще раз с меньшим таймаутом
+            try:
+                response = self.session.post(
+                    f"{API_SERVER_URL}/detect_sound",
+                    json=payload,
+                    timeout=15,
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    sound_type = result["sound_type"]
+                    confidence = result["confidence"]
+                    if confidence > 0.3:
+                        timestamp = datetime.now().strftime("%H:%M:%S")
+                        print(f"🎵 [{timestamp}] {sound_type}: {confidence:.1%}")
+            except:
+                print(f"❌ Повторная попытка не удалась")
         except Exception as e:
-            print(f"❌ Ошибка отправки аудио: {e}")
+            if "timed out" in str(e).lower():
+                print(f"⏰ Ошибка таймаута отправки аудио")
+            else:
+                print(f"❌ Ошибка отправки аудио: {e}")
 
     def audio_loop(self):
         """Основной цикл записи и отправки аудио"""
