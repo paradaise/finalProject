@@ -15,19 +15,26 @@ import pyaudio
 import numpy as np
 from datetime import datetime
 
-# Подавляем ALSA и PortAudio ошибки
+# Полное подавление ALSA и PortAudio ошибок
 os.environ["ALSA_PCM_CARD"] = "0"
 os.environ["ALSA_PCM_DEVICE"] = "0"
+os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
+os.environ["ALSA_DEBUG_LEVEL"] = "0"
+os.environ["PYTHONWARNINGS"] = "ignore"
 
-# Перенаправляем stderr для подавления ALSA ошибок
+# Подавляем все предупреждения и ошибки
 import logging
 
-logging.getLogger().setLevel(logging.ERROR)
-
-# Игнорируем предупреждения ALSA
+logging.getLogger().setLevel(logging.CRITICAL)
 import warnings
 
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore")
+
+# Перенаправляем stderr в /dev/null для полного подавления ошибок
+import io
+import contextlib
+
+sys.stderr = io.StringIO()
 
 # Конфигурация
 API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
@@ -321,18 +328,7 @@ class AudioClient:
             os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
             os.environ["ALSA_DEBUG_LEVEL"] = "0"
 
-            # Временно перенаправляем stderr для подавления ошибок PyAudio
-            import contextlib
-            import io
-
-            stderr_backup = sys.stderr
-            sys.stderr = io.StringIO()
-
-            try:
-                self.audio = pyaudio.PyAudio()
-            finally:
-                # Восстанавливаем stderr
-                sys.stderr = stderr_backup
+            self.audio = pyaudio.PyAudio()
 
             print("🎤 Доступные аудио устройства:")
             supported_devices = []
@@ -346,24 +342,17 @@ class AudioClient:
 
                     # Проверяем поддерживаемые частоты дискретизации
                     try:
-                        # Подавляем ошибки при открытии потока
-                        stderr_backup = sys.stderr
-                        sys.stderr = io.StringIO()
-
-                        try:
-                            test_stream = self.audio.open(
-                                format=FORMAT,
-                                channels=CHANNELS,
-                                rate=SAMPLE_RATE,
-                                input=True,
-                                input_device_index=i,
-                                frames_per_buffer=1024,
-                            )
-                            test_stream.close()
-                            supported_devices.append(i)
-                            print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
-                        finally:
-                            sys.stderr = stderr_backup
+                        test_stream = self.audio.open(
+                            format=FORMAT,
+                            channels=CHANNELS,
+                            rate=SAMPLE_RATE,
+                            input=True,
+                            input_device_index=i,
+                            frames_per_buffer=1024,
+                        )
+                        test_stream.close()
+                        supported_devices.append(i)
+                        print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
                     except Exception as e:
                         # Показываем только краткую ошибку
                         error_msg = str(e)[:50] + "..." if len(str(e)) > 50 else str(e)
