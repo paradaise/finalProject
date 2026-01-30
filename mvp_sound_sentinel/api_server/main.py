@@ -33,7 +33,7 @@ app.add_middleware(
 )
 
 # Глобальные переменные
-db_path = "sound_sentinel.db"
+db_path = "soundsentinel.db"
 model = None
 class_names = []
 websocket_connections = set()
@@ -66,9 +66,10 @@ class SoundDetection(BaseModel):
 
 class CustomSound(BaseModel):
     name: str
-    sound_type: str  # "excluded" или "specific"
-    mfcc_features: List[float]
+    sound_type: str  # "specific" или "excluded"
+    embeddings: List[float]  # YAMNet embeddings
     device_id: str
+    threshold: float = 0.75  # Порог схожести
 
 
 class NotificationSound(BaseModel):
@@ -115,22 +116,23 @@ def init_database():
             sound_type TEXT NOT NULL,
             confidence REAL NOT NULL,
             timestamp TEXT NOT NULL,
-            mfcc_features TEXT,
-            audio_data TEXT,
+            embeddings TEXT,
             FOREIGN KEY (device_id) REFERENCES devices (id)
         )
     """
     )
 
-    # Таблица пользовательских звуков
+    # Таблица пользовательских звуков с YAMNet embeddings
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS custom_sounds (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            sound_type TEXT NOT NULL,
-            mfcc_features TEXT NOT NULL,
             device_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            sound_type TEXT NOT NULL CHECK (sound_type IN ('specific', 'excluded')),
+            embeddings TEXT,
+            centroid TEXT,
+            threshold REAL DEFAULT 0.75,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (device_id) REFERENCES devices (id)
         )
@@ -196,23 +198,103 @@ def load_model():
         return False
 
 
-# Извлечение MFCC признаков
-def extract_mfcc(audio_data: List[float], sample_rate: int = 16000) -> List[float]:
-    """Извлечение MFCC признаков из аудио"""
+# Извлечение YAMNet embeddings
+def extract_embeddings(audio_data: List[float]) -> List[float]:
+    """Извлечение YAMNet embeddings из аудио"""
     try:
         # Конвертация в numpy array
         audio_np = np.array(audio_data, dtype=np.float32)
 
-        # Извлечение MFCC
-        mfcc = librosa.feature.mfcc(y=audio_np, sr=sample_rate, n_mfcc=13)
+        # YAMNet ожидает моно 16kHz
+        if len(audio_np.shape) > 1:
+            audio_np = audio_np[:, 0]  # Берем первый канал
 
-        # Усреднение по времени
-        mfcc_mean = np.mean(mfcc, axis=1)
+        # Запуск модели для получения embeddings
+        scores, embeddings, spectrogram = model(audio_np)
 
-        return mfcc_mean.tolist()
+        # Возвращаем средний embedding по времени (1024-d вектор)
+        embedding_mean = np.mean(embeddings.numpy(), axis=0)
+
+        return embedding_mean.tolist()
     except Exception as e:
-        print(f"❌ Ошибка извлечения MFCC: {e}")
+        print(f"❌ Ошибка извлечения embeddings: {e}")
         return []
+
+
+# Косинусное расстояние между векторами
+def cosine_similarity(a: List[float], b: List[float]) -> float:
+    """Вычисление косинусного расстояния"""
+    try:
+        a_np = np.array(a)
+        b_np = np.array(b)
+
+        dot_product = np.dot(a_np, b_np)
+        norm_a = np.linalg.norm(a_np)
+        norm_b = np.linalg.norm(b_np)
+
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+
+        return dot_product / (norm_a * norm_b)
+    except Exception as e:
+        print(f"❌ Ошибка вычисления cosine similarity: {e}")
+        return 0.0
+
+
+# Поиск лучшего совпадения среди custom sounds
+def find_best_custom_match(embedding: List[float], device_id: str) -> dict:
+    """Поиск лучшего совпадения embedding с custom sounds"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Получаем все custom sounds для устройства
+        cursor.execute(
+            """
+            SELECT id, name, sound_type, embeddings, centroid, threshold 
+            FROM custom_sounds 
+            WHERE device_id = ?
+        """,
+            (device_id,),
+        )
+
+        custom_sounds = cursor.fetchall()
+        conn.close()
+
+        best_match = None
+        best_similarity = 0.0
+
+        for sound in custom_sounds:
+            sound_id, name, sound_type, embeddings_str, centroid_str, threshold = sound
+
+            # Парсим centroid (если есть) или вычисляем из embeddings
+            if centroid_str:
+                centroid = json.loads(centroid_str)
+            else:
+                embeddings = json.loads(embeddings_str) if embeddings_str else []
+                if embeddings:
+                    centroid = np.mean(embeddings, axis=0).tolist()
+                else:
+                    continue
+
+            # Вычисляем схожесть
+            similarity = cosine_similarity(embedding, centroid)
+
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_match = {
+                    "id": sound_id,
+                    "name": name,
+                    "sound_type": sound_type,  # 'specific' или 'excluded'
+                    "similarity": similarity,
+                    "threshold": threshold or 0.75,
+                }
+
+        return best_match or {}
+
+    except Exception as e:
+        print(f"❌ Ошибка поиска custom match: {e}")
+        return {}
 
 
 # Проверка настроек уведомлений
@@ -409,70 +491,125 @@ async def register_device(device: DeviceRegistration):
 
 @app.post("/detect_sound")
 async def detect_sound_endpoint(audio: AudioData):
-    """Детекция звука"""
+    """Детекция звука с поддержкой custom sounds через YAMNet embeddings"""
     if model is None:
         raise HTTPException(status_code=503, detail="Модель не загружена")
 
-    # Детекция
-    detection_result = detect_sound(audio.audio_data)
+    # 1. Извлекаем YAMNet embeddings из аудио
+    embedding = extract_embeddings(audio.audio_data)
 
-    if not detection_result["predictions"]:
-        raise HTTPException(status_code=400, detail="Не удалось детектировать звук")
-
-    # Сохранение лучшего результата
-    top_prediction = detection_result["predictions"][0]
+    if not embedding:
+        raise HTTPException(status_code=400, detail="Не удалось извлечь embeddings")
 
     detection_id = str(uuid.uuid4())
-    mfcc_features = extract_mfcc(audio.audio_data)
 
+    # 2. Проверяем custom sounds через embeddings
+    custom_match = find_best_custom_match(embedding, audio.device_id)
+
+    final_result = {
+        "detection_id": detection_id,
+        "device_id": audio.device_id,
+        "timestamp": datetime.now().isoformat(),
+        "is_custom": False,
+        "custom_sound_type": None,
+        "sound_type": None,
+        "confidence": 0.0,
+        "should_notify": False,
+    }
+
+    # 3. Если найден custom sound с высокой схожестью
+    if custom_match and custom_match.get("similarity", 0) > custom_match.get(
+        "threshold", 0.75
+    ):
+        sound_type = custom_match["sound_type"]  # 'specific' или 'excluded'
+
+        final_result.update(
+            {
+                "is_custom": True,
+                "custom_sound_type": sound_type,
+                "sound_type": custom_match["name"],  # Имя custom sound
+                "confidence": custom_match["similarity"],
+                "should_notify": sound_type
+                == "specific",  # Уведомления только для specific
+            }
+        )
+
+        print(
+            f"🎯 Custom sound detected: {custom_match['name']} - {custom_match['similarity']*100:.2f}% ({sound_type})"
+        )
+
+    # 4. Если custom sound не найден - используем YAMNet
+    else:
+        detection_result = detect_sound(audio.audio_data)
+
+        if detection_result["predictions"]:
+            top_prediction = detection_result["predictions"][0]
+
+            final_result.update(
+                {
+                    "sound_type": top_prediction["sound_type"],
+                    "confidence": top_prediction["confidence"],
+                    "should_notify": should_send_notification(
+                        audio.device_id, top_prediction["sound_type"]
+                    ),
+                }
+            )
+
+            print(
+                f"🔊 YAMNet Detection: {top_prediction['sound_type']} - {top_prediction['confidence']*100:.2f}% - should_notify: {final_result['should_notify']}"
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Не удалось детектировать звук")
+
+    # 5. Сохраняем в БД
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        INSERT INTO sound_detections (id, device_id, sound_type, confidence, timestamp, mfcc_features)
+        INSERT INTO sound_detections (id, device_id, sound_type, confidence, timestamp, embeddings)
         VALUES (?, ?, ?, ?, ?, ?)
-    """,
+        """,
         (
             detection_id,
             audio.device_id,
-            top_prediction["sound_type"],
-            top_prediction["confidence"],
-            datetime.now().isoformat(),
-            json.dumps(mfcc_features),
+            final_result["sound_type"],
+            final_result["confidence"],
+            final_result["timestamp"],
+            json.dumps(embedding),
         ),
     )
 
     conn.commit()
     conn.close()
 
-    # Рассылка в реальном времени только если нужно уведомление
-    should_notify = should_send_notification(
-        audio.device_id, top_prediction["sound_type"]
-    )
-
-    # Логируем для отладки
-    print(
-        f"🔊 Detection: {top_prediction['sound_type']} - {top_prediction['confidence']*100:.2f}% - should_notify: {should_notify}"
-    )
-
+    # 6. Рассылка в реальном времени
     await broadcast_to_websockets(
         {
             "type": "sound_detected",
             "detection_id": detection_id,
             "device_id": audio.device_id,
-            "sound_type": top_prediction["sound_type"],
-            "confidence": top_prediction["confidence"],
-            "timestamp": datetime.now().isoformat(),
-            "should_notify": should_notify,
+            "sound_type": final_result["sound_type"],
+            "confidence": final_result["confidence"],
+            "timestamp": final_result["timestamp"],
+            "should_notify": final_result["should_notify"],
+            "is_custom": final_result["is_custom"],
+            "custom_sound_type": final_result["custom_sound_type"],
         }
     )
 
     return {
         "detection_id": detection_id,
-        "sound_type": top_prediction["sound_type"],
-        "confidence": top_prediction["confidence"],
-        "all_predictions": detection_result["predictions"],
+        "sound_type": final_result["sound_type"],
+        "confidence": final_result["confidence"],
+        "is_custom": final_result["is_custom"],
+        "custom_sound_type": final_result["custom_sound_type"],
+        "should_notify": final_result["should_notify"],
+        "all_predictions": (
+            detection_result.get("predictions", [])
+            if not final_result["is_custom"]
+            else []
+        ),
     }
 
 
@@ -512,19 +649,45 @@ async def update_device(device_id: str, device_update: dict):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        cursor.execute(
-            """
-            UPDATE devices 
-            SET wifi_signal = ?, microphone_info = ?, last_seen = ?
-            WHERE id = ?
-            """,
-            (
-                device_update.get("wifi_signal", 0),
-                device_update.get("microphone_info", "Unknown"),
-                device_update.get("last_seen", datetime.now().isoformat()),
-                device_id,
-            ),
-        )
+        # Проверяем существует ли устройство
+        cursor.execute("SELECT COUNT(*) FROM devices WHERE id = ?", (device_id,))
+        device_exists = cursor.fetchone()[0] > 0
+
+        if not device_exists:
+            # Создаем устройство если его нет
+            cursor.execute(
+                """
+                INSERT INTO devices (id, name, ip_address, mac_address, model, wifi_signal, microphone_info, last_seen)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    device_id,
+                    device_update.get("name", f"Device {device_id[:8]}"),
+                    device_update.get("ip_address", "Unknown"),
+                    device_update.get("mac_address", "Unknown"),
+                    device_update.get("model", "Unknown"),
+                    device_update.get("wifi_signal", 0),
+                    device_update.get("microphone_info", "Unknown"),
+                    device_update.get("last_seen", datetime.now().isoformat()),
+                ),
+            )
+            print(f"✅ Устройство создано: {device_id}")
+        else:
+            # Обновляем существующее устройство
+            cursor.execute(
+                """
+                UPDATE devices 
+                SET wifi_signal = ?, microphone_info = ?, last_seen = ?
+                WHERE id = ?
+                """,
+                (
+                    device_update.get("wifi_signal", 0),
+                    device_update.get("microphone_info", "Unknown"),
+                    device_update.get("last_seen", datetime.now().isoformat()),
+                    device_id,
+                ),
+            )
+            print(f"🔄 Устройство обновлено: {device_id}")
 
         conn.commit()
 
@@ -1212,7 +1375,7 @@ async def get_detections(device_id: str, limit: int = 1000):
     # Затем получаем детекции с лимитом
     cursor.execute(
         """
-        SELECT id, sound_type, confidence, timestamp, mfcc_features
+        SELECT id, sound_type, confidence, timestamp, embeddings
         FROM sound_detections
         WHERE device_id = ?
         ORDER BY timestamp DESC
@@ -1229,7 +1392,7 @@ async def get_detections(device_id: str, limit: int = 1000):
                 "sound_type": row[1],
                 "confidence": row[2],
                 "timestamp": row[3],
-                "mfcc_features": json.loads(row[4]) if row[4] else [],
+                "embeddings": json.loads(row[4]) if row[4] else [],
             }
         )
 
@@ -1237,24 +1400,100 @@ async def get_detections(device_id: str, limit: int = 1000):
     return {"detections": detections, "total_count": total_count}
 
 
+@app.post("/custom_sounds/train")
+async def train_custom_sound(sound_data: dict):
+    """Тренировка custom sound из нескольких аудио записей"""
+    try:
+        name = sound_data["name"]
+        sound_type = sound_data["sound_type"]  # "specific" или "excluded"
+        device_id = sound_data["device_id"]
+        audio_recordings = sound_data["audio_recordings"]  # List[List[float]]
+        threshold = sound_data.get("threshold", 0.75)
+
+        if not audio_recordings:
+            raise HTTPException(status_code=400, detail="No audio recordings provided")
+
+        # Извлекаем embeddings из каждой записи
+        all_embeddings = []
+        for audio_data in audio_recordings:
+            embedding = extract_embeddings(audio_data)
+            if embedding:
+                all_embeddings.append(embedding)
+
+        if not all_embeddings:
+            raise HTTPException(
+                status_code=400, detail="Failed to extract embeddings from audio"
+            )
+
+        # Вычисляем centroid
+        centroid = np.mean(all_embeddings, axis=0).tolist()
+
+        # Сохраняем в БД
+        sound_id = str(uuid.uuid4())
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO custom_sounds (id, name, sound_type, embeddings, centroid, threshold, device_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                sound_id,
+                name,
+                sound_type,
+                json.dumps(all_embeddings),
+                json.dumps(centroid),
+                threshold,
+                device_id,
+            ),
+        )
+
+        conn.commit()
+        conn.close()
+
+        print(
+            f"🎯 Custom sound trained: {name} ({sound_type}) - {len(all_embeddings)} samples - threshold: {threshold}"
+        )
+
+        return {
+            "sound_id": sound_id,
+            "name": name,
+            "sound_type": sound_type,
+            "samples_count": len(all_embeddings),
+            "threshold": threshold,
+            "centroid": centroid,
+            "status": "trained",
+        }
+
+    except Exception as e:
+        print(f"❌ Error training custom sound: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/custom_sounds")
 async def add_custom_sound(sound: CustomSound):
-    """Добавление пользовательского звука"""
+    """Добавление пользовательского звука с YAMNet embeddings"""
     sound_id = str(uuid.uuid4())
+
+    # Вычисляем centroid из embeddings
+    centroid = np.mean(sound.embeddings, axis=0).tolist()
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        INSERT INTO custom_sounds (id, name, sound_type, mfcc_features, device_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO custom_sounds (id, name, sound_type, embeddings, centroid, threshold, device_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
         (
             sound_id,
             sound.name,
             sound.sound_type,
-            json.dumps(sound.mfcc_features),
+            json.dumps(sound.embeddings),
+            json.dumps(centroid),
+            sound.threshold,
             sound.device_id,
         ),
     )
@@ -1262,7 +1501,11 @@ async def add_custom_sound(sound: CustomSound):
     conn.commit()
     conn.close()
 
-    return {"sound_id": sound_id, "status": "added"}
+    print(
+        f"✅ Custom sound added: {sound.name} ({sound.sound_type}) - threshold: {sound.threshold}"
+    )
+
+    return {"sound_id": sound_id, "status": "added", "centroid": centroid}
 
 
 @app.get("/custom_sounds")
@@ -1273,7 +1516,7 @@ async def get_custom_sounds():
 
     cursor.execute(
         """
-        SELECT id, name, sound_type, mfcc_features, device_id, created_at
+        SELECT id, name, sound_type, embeddings, centroid, threshold, device_id, created_at
         FROM custom_sounds
         ORDER BY created_at DESC
     """
@@ -1286,9 +1529,11 @@ async def get_custom_sounds():
                 "id": row[0],
                 "name": row[1],
                 "sound_type": row[2],
-                "mfcc_features": json.loads(row[3]) if row[3] else [],
-                "device_id": row[4],
-                "created_at": row[5],
+                "embeddings": json.loads(row[3]) if row[3] else [],
+                "centroid": json.loads(row[4]) if row[4] else [],
+                "threshold": row[5],
+                "device_id": row[6],
+                "created_at": row[7],
             }
         )
 
@@ -1520,7 +1765,22 @@ async def health_check():
 
 if __name__ == "__main__":
     print("🚀 Запуск Sound Sentinel API сервера...")
-    print("📡 Сервер будет доступен на http://localhost:8000")
-    print("🔗 WebSocket: ws://localhost:8000/ws")
+    print("📡 Сервер будет доступен на https://localhost:8000")
+    print("🔗 WebSocket: wss://localhost:8000/ws")
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    # Запуск с HTTPS
+    import ssl
+
+    # Создаем SSL контекст
+    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ssl_context.load_cert_chain(certfile="certs/cert.pem", keyfile="certs/key.pem")
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info",
+        ssl_keyfile="certs/key.pem",
+        ssl_certfile="certs/cert.pem",
+    )

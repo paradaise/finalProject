@@ -16,7 +16,7 @@ import numpy as np
 from datetime import datetime
 
 # Конфигурация
-API_SERVER_URL = "http://192.168.0.61:8000"  # IP вашего ПК с API сервером
+API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
 DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
@@ -31,6 +31,20 @@ class AudioClient:
         self.is_running = False
         self.audio = None
         self.stream = None
+
+        # Настройки для HTTPS с самоподписанным сертификатом
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        self.session = requests.Session()
+        self.session.verify = False  # Отключаем проверку сертификата
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "User-Agent": "SoundSentinel-Pi-Client/1.0",
+            }
+        )
 
     def get_device_info(self):
         """Получение информации об устройстве"""
@@ -263,7 +277,7 @@ class AudioClient:
             print(f"🌐 IP адрес: {device_info['ip_address']}")
             print(f"🔗 MAC адрес: {device_info['mac_address']}")
 
-            response = requests.post(
+            response = self.session.post(
                 f"{API_SERVER_URL}/register_device",
                 json=device_info,
                 timeout=10,
@@ -288,14 +302,14 @@ class AudioClient:
         """Инициализация аудио потока с улучшенной обработкой ошибок"""
         try:
             # Устанавливаем переменные окружения для уменьшения ошибок ALSA
-            os.environ['ALSA_PCM_CARD'] = '0'
-            os.environ['ALSA_PCM_DEVICE'] = '0'
-            
+            os.environ["ALSA_PCM_CARD"] = "0"
+            os.environ["ALSA_PCM_DEVICE"] = "0"
+
             self.audio = pyaudio.PyAudio()
 
             print("🎤 Доступные аудио устройства:")
             supported_devices = []
-            
+
             for i in range(self.audio.get_device_count()):
                 info = self.audio.get_device_info_by_index(i)
                 if info["maxInputChannels"] > 0:
@@ -317,7 +331,9 @@ class AudioClient:
                         supported_devices.append(i)
                         print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
                     except Exception as e:
-                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz: {str(e)[:50]}...")
+                        print(
+                            f"      ❌ Не поддерживает {SAMPLE_RATE} Hz: {str(e)[:50]}..."
+                        )
 
             if not supported_devices:
                 print("❌ Ни одно устройство не поддерживает 16000 Hz!")
@@ -329,7 +345,7 @@ class AudioClient:
             for i in supported_devices:
                 info = self.audio.get_device_info_by_index(i)
                 name_lower = info["name"].lower()
-                
+
                 if "pulse" in name_lower:
                     device_priority[i] = 1
                 elif "default" in name_lower:
@@ -340,7 +356,9 @@ class AudioClient:
                     device_priority[i] = 4
 
             # Сортируем по приоритету
-            priority_devices = sorted(device_priority.keys(), key=lambda x: device_priority[x])
+            priority_devices = sorted(
+                device_priority.keys(), key=lambda x: device_priority[x]
+            )
 
             for device_index in priority_devices:
                 try:
@@ -448,7 +466,7 @@ class AudioClient:
                 "sample_rate": SAMPLE_RATE,
             }
 
-            response = requests.post(
+            response = self.session.post(
                 f"{API_SERVER_URL}/detect_sound",
                 json=payload,
                 timeout=10,
@@ -517,7 +535,7 @@ class AudioClient:
             if self.stream:
                 self.stream.stop_stream()
                 self.stream.close()
-            
+
             # Пробуем инициализировать заново
             return self.init_audio()
         except Exception as e:
@@ -537,7 +555,7 @@ class AudioClient:
                     "last_seen": datetime.now().isoformat(),
                 }
 
-                response = requests.put(
+                response = self.session.put(
                     f"{API_SERVER_URL}/update_device/{self.device_id}",
                     json=payload,
                     timeout=5,
@@ -576,6 +594,7 @@ class AudioClient:
         try:
             while self.is_running:
                 import time
+
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\n🛑 Остановка клиента...")
