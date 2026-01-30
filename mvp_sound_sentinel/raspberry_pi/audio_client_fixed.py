@@ -15,34 +15,20 @@ import pyaudio
 import numpy as np
 from datetime import datetime
 
-# Полное подавление ALSA и PortAudio ошибок
+# Подавляем ALSA и PortAudio ошибки
 os.environ["ALSA_PCM_CARD"] = "0"
 os.environ["ALSA_PCM_DEVICE"] = "0"
 os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
 os.environ["ALSA_DEBUG_LEVEL"] = "0"
 os.environ["PYTHONWARNINGS"] = "ignore"
-os.environ["ALSA_CONFIG_PATH"] = "/dev/null"
 
-# Подавляем все предупреждения и ошибки
+# Подавляем предупреждения
 import logging
 
-logging.getLogger().setLevel(logging.CRITICAL)
+logging.getLogger().setLevel(logging.ERROR)
 import warnings
 
 warnings.filterwarnings("ignore")
-
-# Полное подавление stderr через файловый дескриптор
-import io
-import contextlib
-import fcntl
-import os
-
-# Создаем null файл для stderr
-try:
-    sys.stderr.close()
-    sys.stderr = open(os.devnull, "w")
-except:
-    pass
 
 # Конфигурация
 API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
