@@ -19,9 +19,15 @@ export default {
             transform: 'translate3d(4px, 0, 0)',
           },
         },
+        bell: {
+          '0%, 100%': { transform: 'rotate(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'rotate(-10deg)' },
+          '20%, 40%, 60%, 80%': { transform: 'rotate(10deg)' },
+        }
       },
       animation: {
         shake: 'shake 0.82s cubic-bezier(.36,.07,.19,.97) both',
+        bell: 'bell 1s ease-in-out',
       },
     },
   },
