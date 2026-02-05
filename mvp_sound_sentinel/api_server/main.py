@@ -19,9 +19,25 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+from contextlib import asynccontextmanager
+
+# Получаем абсолютный путь к директории, где находится скрипт
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Код, который выполняется при старте
+    print("--- Server starting up ---")
+    init_database()
+    success = load_model()
+    if not success:
+        print("⚠️ Модель не загружена. Сервер будет работать в ограниченном режиме.")
+    yield
+    # Код, который выполняется при остановке
+    print("--- Server shutting down ---")
 
 # Инициализация FastAPI
-app = FastAPI(title="Sound Sentinel MVP", version="1.0.0")
+app = FastAPI(title="Sound Sentinel MVP", version="1.0.0", lifespan=lifespan)
 
 # CORS для мобильного приложения
 app.add_middleware(
@@ -445,13 +461,6 @@ async def broadcast_to_websockets(message: dict):
 
 
 # API эндпоинты
-@app.on_event("startup")
-async def startup_event():
-    """Инициализация при старте"""
-    init_database()
-    success = load_model()
-    if not success:
-        print("⚠️ Модель не загружена. Сервер будет работать в ограниченном режиме.")
 
 
 @app.websocket("/ws")
@@ -1859,19 +1868,22 @@ if __name__ == "__main__":
     print("📡 Сервер будет доступен на https://localhost:8000")
     print("🔗 WebSocket: wss://localhost:8000/ws")
 
-    # Запуск с HTTPS
-    import ssl
+    # Запуск сервера с SSL
+    # Пути к сертификатам теперь абсолютные
+    script_dir = os.path.dirname(__file__)
+    cert_path = os.path.join(script_dir, "certs", "cert.pem")
+    key_path = os.path.join(script_dir, "certs", "key.pem")
 
-    # Создаем SSL контекст
-    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_context.load_cert_chain(certfile="certs/cert.pem", keyfile="certs/key.pem")
-
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info",
-        ssl_keyfile="certs/key.pem",
-        ssl_certfile="certs/cert.pem",
-    )
+    if not os.path.exists(cert_path) or not os.path.exists(key_path):
+        print(f"❌ Ошибка: SSL сертификаты не найдены по путям {cert_path} и {key_path}")
+        print("Пожалуйста, убедитесь, что файлы cert.pem и key.pem находятся в папке 'certs' рядом с main.py")
+    else:
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=8000,
+            reload=True,
+            log_level="info",
+            ssl_keyfile=key_path,
+            ssl_certfile=cert_path,
+        )
