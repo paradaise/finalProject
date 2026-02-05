@@ -67,3 +67,8 @@ check_*.py
 migrate_*.py
 update_*.py
 reset_*.py
+
+
+#serts
+*.pem
+*.der
