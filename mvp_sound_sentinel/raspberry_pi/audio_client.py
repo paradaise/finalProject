@@ -14,6 +14,7 @@ import requests
 import pyaudio
 import numpy as np
 from datetime import datetime
+from contextlib import contextmanager
 
 # Подавляем ALSA и PortAudio ошибки
 os.environ["ALSA_PCM_CARD"] = "0"
@@ -322,35 +323,37 @@ class AudioClient:
             os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
             os.environ["ALSA_DEBUG_LEVEL"] = "0"
 
-            self.audio = pyaudio.PyAudio()
+            with suppress_alsa_errors():
+                self.audio = pyaudio.PyAudio()
 
-            print("🎤 Доступные аудио устройства:")
+            print("🎤 Поиск и проверка доступных аудио устройств...")
             supported_devices = []
 
-            for i in range(self.audio.get_device_count()):
-                info = self.audio.get_device_info_by_index(i)
-                if info["maxInputChannels"] > 0:
-                    print(
-                        f"  [{i}] {info['name']} (каналов: {info['maxInputChannels']})"
-                    )
-
-                    # Проверяем поддерживаемые частоты дискретизации
+            device_count = self.audio.get_device_count()
+            for i in range(device_count):
+                with suppress_alsa_errors():
                     try:
-                        test_stream = self.audio.open(
-                            format=FORMAT,
-                            channels=CHANNELS,
-                            rate=SAMPLE_RATE,
-                            input=True,
-                            input_device_index=i,
-                            frames_per_buffer=1024,
-                        )
-                        test_stream.close()
-                        supported_devices.append(i)
-                        print(f"      ✅ Поддерживает {SAMPLE_RATE} Hz")
-                    except Exception as e:
-                        # Показываем только краткую ошибку
-                        error_msg = str(e)[:50] + "..." if len(str(e)) > 50 else str(e)
-                        print(f"      ❌ Не поддерживает {SAMPLE_RATE} Hz: {error_msg}")
+                        info = self.audio.get_device_info_by_index(i)
+                        if info["maxInputChannels"] > 0:
+                            # Проверяем поддержку нужной частоты дискретизации
+                            is_supported = self.audio.is_format_supported(
+                                SAMPLE_RATE,
+                                input_device_index=i,
+                                input_channels=CHANNELS,
+                                input_format=FORMAT,
+                            )
+                            if is_supported:
+                                supported_devices.append(i)
+                                print(
+                                    f"  [✅] Устройство {i}: {info['name']} (поддерживает {SAMPLE_RATE} Hz)"
+                                )
+                            else:
+                                print(
+                                    f"  [❌] Устройство {i}: {info['name']} (не поддерживает {SAMPLE_RATE} Hz)"
+                                )
+                    except Exception:
+                        # Игнорируем устройства, которые вызывают ошибку при проверке
+                        print(f"  [⚠️] Не удалось проверить устройство {i}")
 
             if not supported_devices:
                 print("❌ Ни одно устройство не поддерживает 16000 Hz!")
@@ -656,6 +659,25 @@ class AudioClient:
                 pass
 
         print("✅ Клиент остановлен")
+
+
+@contextmanager
+def suppress_alsa_errors():
+    """Контекстный менеджер для подавления сообщений об ошибках ALSA."""
+    # Сохраняем исходный stderr
+    original_stderr_fd = sys.stderr.fileno()
+    saved_stderr_fd = os.dup(original_stderr_fd)
+
+    try:
+        # Открываем /dev/null для перенаправления вывода
+        devnull_fd = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull_fd, original_stderr_fd)
+
+        yield
+    finally:
+        # Восстанавливаем исходный stderr
+        os.dup2(saved_stderr_fd, original_stderr_fd)
+        os.close(saved_stderr_fd)
 
 
 def main():
