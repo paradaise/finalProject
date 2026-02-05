@@ -669,6 +669,41 @@ async def detect_sound_endpoint(audio: AudioData):
     }
 
 
+@app.delete("/devices/{device_id}/detections")
+async def clear_device_detections(device_id: str):
+    """Удаление всех детекций для указанного устройства"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT id FROM devices WHERE id = ?", (device_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Device not found")
+
+        cursor.execute("DELETE FROM sound_detections WHERE device_id = ?", (device_id,))
+        conn.commit()
+
+        await broadcast_to_websockets(
+            {
+                "type": "detections_cleared",
+                "device_id": device_id,
+            }
+        )
+
+        return {
+            "status": "success",
+            "message": f"All detections for device {device_id} have been cleared.",
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Internal server error while clearing detections."
+        )
+    finally:
+        conn.close()
+
+
 @app.delete("/devices/{device_id}")
 async def delete_device(device_id: str):
     """Удаление устройства"""

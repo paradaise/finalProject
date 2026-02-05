@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wifi, Volume2, Clock, Activity, Mic, Globe, ArrowLeft, Cpu } from 'lucide-react';
+import { Wifi, Volume2, Clock, Activity, Mic, Globe, ArrowLeft, Cpu, Trash2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { getSoundIcon } from '../data/criticalSounds';
 import { AudioLevelChart } from './AudioLevelChart';
@@ -57,6 +57,19 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
       ws.close();
     };
   }, [deviceId]);
+
+  const handleClearDetections = async () => {
+    if (window.confirm(`Вы уверены, что хотите очистить всю историю детекций для устройства "${device.name}"?`)) {
+      try {
+        await apiClient.clearDeviceDetections(deviceId);
+        setDetections([]);
+        setCurrentSound(null);
+      } catch (error) {
+        console.error('Error clearing detections:', error);
+        alert('Не удалось очистить историю детекций.');
+      }
+    }
+  };
 
   const loadDeviceData = async () => {
     try {
@@ -153,7 +166,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100">
           <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Информация об устройстве</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 group hover:shadow-lg transition-all duration-200">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -162,7 +175,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.model}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 group hover:shadow-lg transition-all duration-200">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -171,7 +184,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.ip_address}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 group hover:shadow-lg transition-all duration-200">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -180,7 +193,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <p className="font-bold font-mono text-xs sm:text-sm text-gray-900 break-all">{device.mac_address}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-100 group hover:shadow-lg transition-all duration-200">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -189,7 +202,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.microphone_info || 'Неизвестно'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100 group hover:shadow-lg transition-all duration-200">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Wifi className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -198,7 +211,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.wifi_signal}%</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-200 group hover:shadow-lg transition-all duration-200">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-200 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -213,7 +226,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
         {/* Stats */}
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+            <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 cursor-pointer">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg">
                 <Wifi className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
@@ -222,7 +235,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 {device.status === 'online' ? 'Онлайн' : 'Офлайн'}
               </p>
             </div>
-            <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 cursor-pointer">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg">
                 <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
@@ -305,11 +318,17 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                   </div>
                 </div>
               ))}
-              {detections.length > 50 && (
-                <div className="text-center py-4 sm:py-6 bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-100">
+              {detections.length > 0 && (
+                <div className="flex items-center justify-between text-center py-4 sm:py-6 bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-100 px-6">
                   <p className="text-gray-500 text-xs sm:text-sm font-medium">
-                    Показано 50 из {detections.length} детекций
+                    Показано {Math.min(50, detections.length)} из {detections.length} детекций
                   </p>
+                  <button
+                    onClick={handleClearDetections}
+                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-md"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>

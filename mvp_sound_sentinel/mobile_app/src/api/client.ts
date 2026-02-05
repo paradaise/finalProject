@@ -129,6 +129,13 @@ class ApiClient {
     }
   }
 
+  // Очистка истории детекций
+  async clearDeviceDetections(deviceId: string): Promise<any> {
+    return this.request(`/devices/${deviceId}/detections`, {
+      method: 'DELETE',
+    });
+  }
+
   // Получение детекций для устройства
   async getDeviceEvents(
     deviceId: string,
