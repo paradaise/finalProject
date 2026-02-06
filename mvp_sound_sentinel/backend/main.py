@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 # Получаем абсолютный путь к директории, где находится скрипт
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Код, который выполняется при старте
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI):
     yield
     # Код, который выполняется при остановке
     print("--- Server shutting down ---")
+
 
 # Инициализация FastAPI
 app = FastAPI(title="Sound Sentinel MVP", version="1.0.0", lifespan=lifespan)
@@ -70,6 +72,7 @@ class AudioData(BaseModel):
     device_id: str
     audio_data: List[float]  # 16kHz, mono
     sample_rate: int = 16000
+    db_level: Optional[float] = None
 
 
 class SoundDetection(BaseModel):
@@ -660,6 +663,7 @@ async def detect_sound_endpoint(audio: AudioData):
             "should_notify": final_result["should_notify"],
             "is_custom": final_result["is_custom"],
             "custom_sound_type": final_result["custom_sound_type"],
+            "db_level": audio.db_level,
         }
     )
 
@@ -1875,8 +1879,12 @@ if __name__ == "__main__":
     key_path = os.path.join(script_dir, "certs", "key.pem")
 
     if not os.path.exists(cert_path) or not os.path.exists(key_path):
-        print(f"❌ Ошибка: SSL сертификаты не найдены по путям {cert_path} и {key_path}")
-        print("Пожалуйста, убедитесь, что файлы cert.pem и key.pem находятся в папке 'certs' рядом с main.py")
+        print(
+            f"❌ Ошибка: SSL сертификаты не найдены по путям {cert_path} и {key_path}"
+        )
+        print(
+            "Пожалуйста, убедитесь, что файлы cert.pem и key.pem находятся в папке 'certs' рядом с main.py"
+        )
     else:
         uvicorn.run(
             "main:app",

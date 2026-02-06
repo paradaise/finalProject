@@ -37,8 +37,9 @@ DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_DURATION = 30  # секунды на один чанк (обновление каждые 30 секунд)
+CHUNK_DURATION = 1  # секунда на один чанк для более частого обновления
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
+DB_REFERENCE = 1.0  # Базовое значение для расчета дБ
 
 
 class AudioClient:
@@ -473,17 +474,38 @@ class AudioClient:
             print(f"❌ Ошибка ресемплинга: {e}")
             return audio_data  # Возвращаем оригинал если не получилось
 
+    def calculate_db(self, audio_data):
+        """Расчет уровня звука в дБ (RMS)"""
+        try:
+            # RMS (Root Mean Square)
+            rms = np.sqrt(np.mean(np.square(audio_data)))
+            if rms > 0:
+                # 20 * log10(rms / reference)
+                # Мы нормализуем значение, чтобы оно было в разумных пределах для графика
+                db = 20 * np.log10(rms)
+                # Ограничиваем диапазон от -100 до 0 для удобства отображения
+                return max(-100, min(0, db))
+            return -100
+        except Exception as e:
+            print(f"❌ Ошибка расчета дБ: {e}")
+            return -100
+
     def send_audio_chunk(self, audio_data):
         """Отправка аудио чанка на детекцию"""
         try:
             if not self.device_id:
-                print("❌ Устройство не зарегистрировано!")
                 return
+
+            db_level = self.calculate_db(audio_data)
+            # Преобразуем дБ в положительную шкалу 0-100 для фронтенда
+            # -100дБ -> 0, 0дБ -> 100
+            normalized_db = (db_level + 100)
 
             payload = {
                 "device_id": self.device_id,
                 "audio_data": audio_data.tolist(),
                 "sample_rate": SAMPLE_RATE,
+                "db_level": normalized_db
             }
 
             response = self.session.post(

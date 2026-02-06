@@ -77,9 +77,9 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
       <div className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Activity className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => window.location.reload()}>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+                <Activity className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
               </div>
               <div>
                 <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Sound Sentinel</h1>
@@ -114,8 +114,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
       <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            <div className="text-center group">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg group-hover:shadow-xl transition-all duration-200 transform group-hover:scale-105">
+            <div className="text-center group cursor-pointer" onClick={() => window.location.reload()}>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg group-hover:shadow-xl transition-all duration-200 transform group-hover:scale-110">
                 <Wifi className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <p className="text-xs sm:text-sm text-gray-600 font-medium">Устройств онлайн</p>
@@ -123,8 +123,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                 {devices.filter(d => d.status === 'online').length}/{devices.length}
               </p>
             </div>
-            <div className="text-center group">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg group-hover:shadow-xl transition-all duration-200 transform group-hover:scale-105">
+            <div className="text-center group cursor-pointer" onClick={() => window.location.reload()}>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg group-hover:shadow-xl transition-all duration-200 transform group-hover:scale-110">
                 <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <p className="text-xs sm:text-sm text-gray-600 font-medium">Всего детекций</p>
@@ -132,8 +132,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                 {Object.values(detections).reduce((sum, dets) => sum + dets.length, 0)}
               </p>
             </div>
-            <div className="text-center group">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg group-hover:shadow-xl transition-all duration-200 transform group-hover:scale-105">
+            <div className="text-center group cursor-pointer" onClick={() => window.location.reload()}>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg group-hover:shadow-xl transition-all duration-200 transform group-hover:scale-110">
                 <Signal className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <p className="text-xs sm:text-sm text-gray-600 font-medium">Активных устройств</p>
