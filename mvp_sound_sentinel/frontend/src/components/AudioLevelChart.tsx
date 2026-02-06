@@ -10,6 +10,10 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
   const animationRef = useRef<number>();
   const [tooltip, setTooltip] = useState<{ x: number; y: number; level: number } | null>(null);
 
+  // Sound Intensity Progress Bar
+  const intensity = Math.min(100, Math.max(0, currentLevel));
+  const intensityColor = intensity > 80 ? 'bg-red-500' : intensity > 50 ? 'bg-orange-500' : intensity > 25 ? 'bg-yellow-500' : 'bg-green-500';
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -23,10 +27,10 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    const padding = { top: 10, right: 10, bottom: 20, left: 30 };
+    const padding = { top: 10, right: 10, bottom: 10, left: 10 };
     const width = canvas.width / dpr - padding.left - padding.right;
     const height = canvas.height / dpr - padding.top - padding.bottom;
-    const timeWindow = 10000; // 5 секунд
+    const timeWindow = 5000; // 5 seconds window as requested previously
 
     const handleMouseMove = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -60,38 +64,18 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
       audioLevelsRef.current = audioLevelsRef.current.filter(p => now - p.timestamp < timeWindow);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#f8fafc'; // Matches the light grey background in screenshot
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.save();
       ctx.translate(padding.left, padding.top);
 
-      // Draw grid and labels
-      ctx.strokeStyle = '#f0f0f0';
-      ctx.lineWidth = 1;
-      ctx.font = '10px sans-serif';
-      ctx.fillStyle = '#9ca3af';
-
-      // Y-axis
-      for (let i = 0; i <= 4; i++) {
-        const y = (height / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-        ctx.fillText(`${100 - i * 25}`, -padding.left + 5, y + 3);
-      }
-
-      // X-axis
-      for (let i = 0; i <= 5; i++) {
-        const x = (width / 5) * i;
-        ctx.fillText(`-${5 - i}s`, x - 5, height + 15);
-      }
-
       // Draw chart
       if (audioLevelsRef.current.length > 1) {
-        ctx.strokeStyle = '#3b82f6';
+        ctx.strokeStyle = '#3b82f6'; // Blue line
         ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
         ctx.beginPath();
         const startTime = now - timeWindow;
         audioLevelsRef.current.forEach((point, index) => {
@@ -100,23 +84,6 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
           if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
         ctx.stroke();
-
-        const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        const firstPoint = audioLevelsRef.current[0];
-        ctx.moveTo(((firstPoint.timestamp - startTime) / timeWindow) * width, height);
-        audioLevelsRef.current.forEach(point => {
-          const x = ((point.timestamp - startTime) / timeWindow) * width;
-          const y = height - (point.level / 100) * height;
-          ctx.lineTo(x, y);
-        });
-        const lastPoint = audioLevelsRef.current[audioLevelsRef.current.length - 1];
-        ctx.lineTo(((lastPoint.timestamp - startTime) / timeWindow) * width, height);
-        ctx.closePath();
-        ctx.fill();
       }
       ctx.restore();
 
@@ -148,21 +115,39 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
   }, [currentLevel, tooltip]);
 
   return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100">
-      <h3 className="text-lg sm:text-xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Уровень звука</h3>
-      <div className="relative h-48">
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full rounded-lg"
-        />
-        {tooltip && (
+    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col gap-6">
+      {/* Sound Intensity Section */}
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600 font-medium">Sound Intensity</span>
+          <span className="text-gray-900 font-bold">{currentLevel.toFixed(0)} dB</span>
+        </div>
+        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
           <div 
-            className="absolute bg-gray-800 text-white text-xs rounded py-1 px-2 pointer-events-none"
-            style={{ left: tooltip.x + 5, top: tooltip.y - 30, transform: 'translateX(-50%)' }}
-          >
-            {tooltip.level.toFixed(1)} dB
-          </div>
-        )}
+            className="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 transition-all duration-300"
+            style={{ width: `${intensity}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Live Audio Waveform Section */}
+      <div className="flex flex-col gap-3">
+        <span className="text-gray-600 font-medium">Live Audio Waveform</span>
+        <div className="relative h-40 bg-slate-50 rounded-2xl overflow-hidden">
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 w-full h-full cursor-crosshair"
+          />
+          {tooltip && (
+            <div 
+              className="absolute bg-white/90 backdrop-blur-sm border border-gray-200 shadow-xl rounded-lg py-1.5 px-3 pointer-events-none transition-all duration-75 flex items-center gap-2"
+              style={{ left: tooltip.x, top: tooltip.y - 45, transform: 'translateX(-50%)' }}
+            >
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-gray-900 font-bold text-sm whitespace-nowrap">{tooltip.level.toFixed(1)} dB</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
