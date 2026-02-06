@@ -37,9 +37,15 @@ DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_DURATION = 1  # секунда на один чанк для более частого обновления
+
+# ПЕРЕМЕННЫЕ УПРАВЛЕНИЯ ЧАСТОТОЙ (в секундах)
+LEVEL_UPDATE_INTERVAL = 1  # Интервал обновления уровня звука (дБ)
+DETECTION_INTERVAL = 30  # Интервал полной детекции звуков
+
+# Размер чанка для уровня звука
+CHUNK_DURATION = LEVEL_UPDATE_INTERVAL
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
-DB_REFERENCE = 1.0  # Базовое значение для расчета дБ
+DB_REFERENCE = 1.0
 
 
 class AudioClient:
@@ -499,13 +505,13 @@ class AudioClient:
             db_level = self.calculate_db(audio_data)
             # Преобразуем дБ в положительную шкалу 0-100 для фронтенда
             # -100дБ -> 0, 0дБ -> 100
-            normalized_db = (db_level + 100)
+            normalized_db = db_level + 100
 
             payload = {
                 "device_id": self.device_id,
                 "audio_data": audio_data.tolist(),
                 "sample_rate": SAMPLE_RATE,
-                "db_level": normalized_db
+                "db_level": normalized_db,
             }
 
             response = self.session.post(
@@ -551,45 +557,77 @@ class AudioClient:
 
     def audio_loop(self):
         """Основной цикл записи и отправки аудио"""
-        print(f"🎙️ Начинаю запись аудио (чанки по {CHUNK_DURATION} сек)...")
+        print(
+            f"🎙️ Начинаю мониторинг (дБ каждые {LEVEL_UPDATE_INTERVAL}с, детекция каждые {DETECTION_INTERVAL}с)..."
+        )
 
-        update_counter = 0  # Счетчик для обновления информации об устройстве
+        audio_buffer = []  # Буфер для накопления данных на детекцию
+        seconds_passed = 0
 
         try:
             while self.is_running:
-                # Определяем размер чанка в зависимости от частоты
+                # Определяем размер чанка
                 if hasattr(self, "fallback_sample_rate"):
-                    chunk_size = int(self.fallback_sample_rate * CHUNK_DURATION)
+                    chunk_size = int(self.fallback_sample_rate * LEVEL_UPDATE_INTERVAL)
                 else:
                     chunk_size = CHUNK_SIZE
 
-                # Читаем аудио данные
+                # Читаем аудио данные за 1 секунду
                 try:
-                    audio_data = np.frombuffer(
-                        self.stream.read(chunk_size, exception_on_overflow=False),
-                        dtype=np.float32,
-                    )
+                    raw_data = self.stream.read(chunk_size, exception_on_overflow=False)
+                    audio_data = np.frombuffer(raw_data, dtype=np.float32)
                 except Exception as e:
                     print(f"❌ Ошибка чтения аудио: {e}")
-                    # Пробуем перезапустить поток
                     if not self.restart_audio_stream():
                         break
                     continue
 
-                # Ресемплинг если используется другая частота
+                # Ресемплинг если нужно
                 if hasattr(self, "fallback_sample_rate"):
                     audio_data = self.resample_audio(
                         audio_data, self.fallback_sample_rate, SAMPLE_RATE
                     )
 
-                # Отправляем на детекцию
-                self.send_audio_chunk(audio_data)
+                # 1. Сразу отправляем уровень звука (каждую секунду)
+                db_level = self.calculate_db(audio_data)
+                normalized_db = db_level + 100
+                self.send_audio_level(normalized_db)
 
-                # Обновляем информацию об устройстве каждый чанк (каждые 30 секунд)
-                self.update_device_info()
+                # 2. Накапливаем данные для детекции
+                audio_buffer.append(audio_data)
+                seconds_passed += LEVEL_UPDATE_INTERVAL
+
+                # 3. Если прошло 30 секунд - отправляем на детекцию
+                if seconds_passed >= DETECTION_INTERVAL:
+                    # Объединяем накопленные данные в один массив
+                    full_audio_to_detect = np.concatenate(audio_buffer)
+                    # Ограничиваем размер (YAMNet не любит слишком длинные куски, 30с - ок)
+                    self.send_audio_chunk(full_audio_to_detect)
+
+                    # Очищаем буфер
+                    audio_buffer = []
+                    seconds_passed = 0
+
+                # Обновляем информацию об устройстве каждые 30 секунд
+                if seconds_passed == 0:
+                    self.update_device_info()
 
         except Exception as e:
             print(f"❌ Ошибка в аудио цикле: {e}")
+
+    def send_audio_level(self, normalized_db):
+        """Отправка только уровня звука"""
+        try:
+            payload = {
+                "device_id": self.device_id,
+                "db_level": normalized_db,
+                "timestamp": datetime.now().isoformat(),
+            }
+            self.session.post(
+                f"{API_SERVER_URL}/update_audio_level", json=payload, timeout=2
+            )
+        except:
+            pass  # Игнорируем ошибки для быстрых обновлений дБ
 
     def restart_audio_stream(self):
         """Перезапуск аудио потока при ошибках"""

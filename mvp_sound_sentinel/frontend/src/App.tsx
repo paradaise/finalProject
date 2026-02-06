@@ -57,6 +57,9 @@ export default function App() {
         // Отправляем событие для уведомлений
         console.log('📤 Dispatching soundDetected event with:', data);
         window.dispatchEvent(new CustomEvent('soundDetected', { detail: data }));
+      } else if (data.type === 'audio_level_updated') {
+        // Пробрасываем событие уровня звука для компонентов, которым это нужно (например, графику в DeviceDetail)
+        window.dispatchEvent(new CustomEvent('audioLevelUpdated', { detail: data }));
       }
     });
 

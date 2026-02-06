@@ -91,9 +91,24 @@ class CustomSound(BaseModel):
     threshold: float = 0.75  # Порог схожести
 
 
-class NotificationSound(BaseModel):
-    sound_name: str
+class AudioLevel(BaseModel):
     device_id: str
+    db_level: float
+    timestamp: str
+
+
+@app.post("/update_audio_level")
+async def update_audio_level(data: AudioLevel):
+    """Обновление только уровня звука без детекции"""
+    await broadcast_to_websockets(
+        {
+            "type": "audio_level_updated",
+            "device_id": data.device_id,
+            "db_level": data.db_level,
+            "timestamp": data.timestamp,
+        }
+    )
+    return {"status": "success"}
 
 
 class ExcludedSound(BaseModel):

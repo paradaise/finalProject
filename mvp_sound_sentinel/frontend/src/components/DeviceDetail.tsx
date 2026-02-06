@@ -19,41 +19,53 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
   useEffect(() => {
     loadDeviceData();
     
-    // Подписываемся на WebSocket обновления
+    // Подписываемся на системные события (уровень звука и детекции)
+    const handleAudioLevel = (event: any) => {
+      const data = event.detail;
+      if (data.device_id === deviceId) {
+        setAudioLevel(data.db_level);
+      }
+    };
+
+    const handleSoundDetected = (event: any) => {
+      const data = event.detail;
+      if (data.device_id === deviceId) {
+        setCurrentSound({
+          sound_type: data.sound_type,
+          confidence: data.confidence,
+          timestamp: data.timestamp
+        });
+        
+        setDetections(prev => {
+          const isDuplicate = prev.length > 0 && 
+            prev[0].sound_type === data.sound_type && 
+            prev[0].confidence === data.confidence &&
+            Math.abs(new Date(prev[0].timestamp).getTime() - new Date(data.timestamp).getTime()) < 1000;
+          
+          if (!isDuplicate) {
+            return [data, ...prev.slice(0, 49)];
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener('audioLevelUpdated', handleAudioLevel);
+    window.addEventListener('soundDetected', handleSoundDetected);
+    
+    // Подписываемся на WebSocket обновления для системных событий устройства
     const ws = apiClient.connectWebSocket((data: any) => {
       if (data.device_id === deviceId) {
-        if (data.type === 'sound_detected') {
-          setCurrentSound({
-            sound_type: data.sound_type,
-            confidence: data.confidence,
-            timestamp: data.timestamp
-          });
-          
-          // Проверяем на дубликаты перед добавлением
-          setDetections(prev => {
-            const isDuplicate = prev.length > 0 && 
-              prev[0].sound_type === data.sound_type && 
-              prev[0].confidence === data.confidence &&
-              Math.abs(new Date(prev[0].timestamp).getTime() - new Date(data.timestamp).getTime()) < 1000;
-            
-            if (!isDuplicate) {
-              return [data, ...prev.slice(0, 49)];
-            }
-            return prev;
-          });
-          
-          // Обновляем уровень звука (симуляция)
-          setAudioLevel(Math.random() * 60 + 20); // 20-80 dB
-        }
-        
         // Обновление информации об устройстве (включая WiFi)
-        if (data.type === 'device_updated' && data.device_id === deviceId) {
+        if (data.type === 'device_updated') {
           setDevice((prev: any) => prev ? { ...prev, ...data.device_info } : null);
         }
       }
     });
 
     return () => {
+      window.removeEventListener('audioLevelUpdated', handleAudioLevel);
+      window.removeEventListener('soundDetected', handleSoundDetected);
       ws.close();
     };
   }, [deviceId]);
@@ -272,7 +284,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
         )}
 
         {/* График уровня звука */}
-        <AudioLevelChart deviceId={deviceId} currentLevel={audioLevel} />
+        <AudioLevelChart currentLevel={audioLevel} />
 
         {/* История детекций */}
         <div className="space-y-4 sm:space-y-6">
