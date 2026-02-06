@@ -153,23 +153,23 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button
-              onClick={onBack}
-              className="p-2 sm:p-3 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg active:scale-95 group"
-            >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" />
-            </button>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Activity className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{device.name}</h1>
-                <p className="text-xs sm:text-sm text-gray-600">{device.ip_address}</p>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button
+                onClick={onBack}
+                className="p-2 sm:p-3 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg active:scale-95 group"
+              >
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" />
+              </button>
+              <div className="flex items-center gap-3 sm:gap-4 cursor-pointer group" onClick={() => window.location.reload()}>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 cursor-pointer">
+                  <Activity className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent cursor-pointer">{device.name}</h1>
+                  <p className="text-xs sm:text-sm text-gray-600">{device.ip_address}</p>
+                </div>
               </div>
             </div>
-          </div>
         </div>
       </div>
 

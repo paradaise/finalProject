@@ -34,7 +34,7 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
 
     const handleMouseMove = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left - padding.left;
+      const x = event.clientX - rect.left;
       const now = Date.now();
       const startTime = now - timeWindow;
 
@@ -43,7 +43,7 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
       const closestPoint = audioLevelsRef.current.reduce((prev, curr) => {
         const prevX = ((prev.timestamp - startTime) / timeWindow) * width;
         const currX = ((curr.timestamp - startTime) / timeWindow) * width;
-        return Math.abs(currX - x) < Math.abs(prevX - x) ? curr : prev;
+        return Math.abs(currX - (x - padding.left)) < Math.abs(prevX - (x - padding.left)) ? curr : prev;
       });
 
       const pointX = padding.left + ((closestPoint.timestamp - startTime) / timeWindow) * width;
@@ -70,6 +70,28 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
       ctx.save();
       ctx.translate(padding.left, padding.top);
 
+      // Draw grid
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+
+      // Horizontal grid lines
+      for (let i = 0; i <= 4; i++) {
+        const y = (height / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Vertical grid lines
+      for (let i = 0; i <= 5; i++) {
+        const x = (width / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+
       // Draw chart
       if (audioLevelsRef.current.length > 1) {
         ctx.strokeStyle = '#3b82f6'; // Blue line
@@ -84,23 +106,42 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
           if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
         ctx.stroke();
+
+        // Add gradient fill under the line
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        const firstPoint = audioLevelsRef.current[0];
+        ctx.moveTo(((firstPoint.timestamp - startTime) / timeWindow) * width, height);
+        audioLevelsRef.current.forEach(point => {
+          const x = ((point.timestamp - startTime) / timeWindow) * width;
+          const y = height - (point.level / 100) * height;
+          ctx.lineTo(x, y);
+        });
+        const lastPoint = audioLevelsRef.current[audioLevelsRef.current.length - 1];
+        ctx.lineTo(((lastPoint.timestamp - startTime) / timeWindow) * width, height);
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.restore();
 
       // Draw tooltip
       if (tooltip) {
         ctx.strokeStyle = '#9ca3af';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(tooltip.x, padding.top);
-        ctx.lineTo(tooltip.x, height + padding.top);
+        ctx.moveTo(tooltip.x - padding.left, 0);
+        ctx.lineTo(tooltip.x - padding.left, height);
         ctx.stroke();
 
         ctx.fillStyle = '#3b82f6';
         ctx.beginPath();
-        ctx.arc(tooltip.x, tooltip.y, 4, 0, 2 * Math.PI);
+        ctx.arc(tooltip.x - padding.left, tooltip.y - padding.top, 4, 0, 2 * Math.PI);
         ctx.fill();
       }
+
+      ctx.restore();
 
       animationRef.current = requestAnimationFrame(draw);
     };
@@ -140,8 +181,11 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
           />
           {tooltip && (
             <div 
-              className="absolute bg-white/90 backdrop-blur-sm border border-gray-200 shadow-xl rounded-lg py-1.5 px-3 pointer-events-none transition-all duration-75 flex items-center gap-2"
-              style={{ left: tooltip.x, top: tooltip.y - 45, transform: 'translateX(-50%)' }}
+              className="absolute bg-white/90 backdrop-blur-sm border border-gray-200 shadow-xl rounded-lg py-1.5 px-3 pointer-events-none transition-all duration-75 flex items-center gap-2 z-10"
+              style={{ 
+                left: Math.min(Math.max(tooltip.x - 40, 10), 360), 
+                top: Math.max(tooltip.y - 45, 10) 
+              }}
             >
               <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               <span className="text-gray-900 font-bold text-sm whitespace-nowrap">{tooltip.level.toFixed(1)} dB</span>

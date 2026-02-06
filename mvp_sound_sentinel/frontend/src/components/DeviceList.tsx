@@ -78,8 +78,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
         <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3 cursor-pointer group" onClick={() => window.location.reload()}>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                <Activity className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+                <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
               <div>
                 <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Sound Sentinel</h1>
@@ -175,7 +175,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                           <img 
                             src="/images/raspberry-pi-logo-svgrepo-com.svg" 
                             alt="Raspberry Pi"
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-contain shadow-xl transition-all duration-300 ${
+                            className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-contain shadow-xl transition-all duration-300 ${
                               hoveredDevice === device.id ? 'scale-110 rotate-6' : 'scale-100 rotate-0'
                             }`}
                             onError={(e) => {
@@ -188,7 +188,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                             }}
                           />
                           <div 
-                            className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-xl"
+                            className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-xl"
                             style={{ display: 'none' }}
                           >
                             <span className="text-white font-bold text-sm sm:text-lg">RPi</span>
@@ -201,7 +201,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                       
                       <div className="flex-1 w-full">
                         {/* Название и статус */}
-                        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2 cursor-pointer">
                           {getStatusIcon(device.status)}
                           <h3 className="text-base sm:text-lg font-semibold text-gray-900">{device.name}</h3>
                         </div>
@@ -212,7 +212,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                             <p className="text-gray-600 text-xs sm:text-sm">Модель</p>
                             <p className="font-medium text-gray-900 text-sm sm:text-base">{device.model}</p>
                           </div>
-                          <div>
+                          <div className="cursor-pointer">
                             <p className="text-gray-600 text-xs sm:text-sm">IP адрес</p>
                             <p className="font-medium text-sm sm:text-base">{device.ip_address}</p>
                           </div>

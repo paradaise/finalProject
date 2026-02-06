@@ -59,6 +59,7 @@ websocket_connections = set()
 
 # Модели данных
 class DeviceRegistration(BaseModel):
+    model_config = {"protected_namespaces": ()}
     name: str
     ip_address: str
     mac_address: str
@@ -109,6 +110,11 @@ async def update_audio_level(data: AudioLevel):
         }
     )
     return {"status": "success"}
+
+
+class NotificationSound(BaseModel):
+    sound_name: str
+    device_id: str
 
 
 class ExcludedSound(BaseModel):
