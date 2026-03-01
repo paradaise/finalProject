@@ -122,6 +122,65 @@ async def update_audio_level(data: AudioLevel):
     return {"status": "success"}
 
 
+class DeviceUpdate(BaseModel):
+    device_id: str
+    wifi_signal: Optional[int] = None
+    microphone_info: Optional[str] = None
+    model: Optional[str] = None
+    last_seen: Optional[str] = None
+
+
+@app.put("/devices/{device_id}")
+async def update_device(device_id: str, device_update: DeviceUpdate):
+    """Обновление информации об устройстве"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Обновляем только переданные поля
+        update_fields = []
+        update_values = []
+
+        if device_update.wifi_signal is not None:
+            update_fields.append("wifi_signal = ?")
+            update_values.append(device_update.wifi_signal)
+
+        if device_update.microphone_info is not None:
+            update_fields.append("microphone_info = ?")
+            update_values.append(device_update.microphone_info)
+
+        if device_update.model is not None:
+            update_fields.append("model = ?")
+            update_values.append(device_update.model)
+
+        # Всегда обновляем last_seen
+        update_fields.append("last_seen = ?")
+        update_values.append(device_update.last_seen or datetime.now().isoformat())
+
+        if update_fields:
+            sql = f"UPDATE devices SET {', '.join(update_fields)} WHERE id = ?"
+            cursor.execute(sql, update_values + [device_id])
+            conn.commit()
+
+            # Рассылка обновления через WebSocket
+            await broadcast_to_websockets(
+                {
+                    "type": "device_updated",
+                    "device_id": device_id,
+                    "device_info": device_update.dict(),
+                }
+            )
+
+            print(f"🔄 Устройство обновлено: {device_id}")
+
+        conn.close()
+        return {"status": "success"}
+
+    except Exception as e:
+        print(f"❌ Ошибка обновления устройства: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class NotificationSound(BaseModel):
     sound_name: str
     device_id: str
