@@ -8,12 +8,22 @@ import os
 import sqlite3
 import json
 import uuid
+import warnings
 from datetime import datetime
 from typing import List, Dict, Optional
 import numpy as np
 import librosa
 import tensorflow as tf
 import tensorflow_hub as hub
+
+# Импортируем конфигурацию
+from config import config
+
+# Подавляем warnings если настроено
+if config.SUPPRESS_TENSORFLOW_WARNINGS:
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,14 +54,14 @@ app = FastAPI(title="Sound Sentinel MVP", version="1.0.0", lifespan=lifespan)
 # CORS для мобильного приложения
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Глобальные переменные
-db_path = "soundsentinel.db"
+db_path = config.DB_PATH
 model = None
 class_names = []
 websocket_connections = set()
@@ -218,7 +228,31 @@ def load_model():
     global model, class_names
     try:
         print("🔄 Загрузка YAMNet модели...")
-        model = hub.load("https://tfhub.dev/google/yamnet/1")
+
+        # Очищаем кэш если есть проблемы
+        import tempfile
+
+        cache_dir = os.path.join(tempfile.gettempdir(), "tfhub_modules")
+        if os.path.exists(cache_dir):
+            import shutil
+
+            try:
+                shutil.rmtree(cache_dir)
+                print("🧹 Старый кэш TensorFlow Hub удалён")
+            except:
+                pass
+
+        # Пробуем загрузить с разными URL из конфига
+        for url in config.MODEL_URLS:
+            try:
+                print(f"🔄 Пробуем загрузить модель с: {url}")
+                model = hub.load(url)
+                break
+            except Exception as e:
+                print(f"⚠️ Не удалось загрузить с {url}: {e}")
+                continue
+        else:
+            raise Exception("Все URL не сработали")
 
         # Загрузка названий классов
         class_names_path = tf.keras.utils.get_file(
@@ -1890,29 +1924,42 @@ async def health_check():
 
 if __name__ == "__main__":
     print("🚀 Запуск Sound Sentinel API сервера...")
-    print("📡 Сервер будет доступен на https://localhost:8000")
-    print("🔗 WebSocket: wss://localhost:8000/ws")
+    print(
+        f"📡 Сервер будет доступен на {'https' if config.USE_SSL else 'http'}://{config.HOST}:{config.PORT}"
+    )
+    print(
+        f"🔗 WebSocket: {'wss' if config.USE_SSL else 'ws'}://{config.HOST}:{config.PORT}/ws"
+    )
 
-    # Запуск сервера с SSL
-    # Пути к сертификатам теперь абсолютные
-    script_dir = os.path.dirname(__file__)
-    cert_path = os.path.join(script_dir, "certs", "cert.pem")
-    key_path = os.path.join(script_dir, "certs", "key.pem")
+    if config.USE_SSL:
+        # Пути к сертификатам теперь абсолютные
+        script_dir = os.path.dirname(__file__)
+        cert_path = os.path.join(script_dir, config.SSL_CERT_PATH)
+        key_path = os.path.join(script_dir, config.SSL_KEY_PATH)
 
-    if not os.path.exists(cert_path) or not os.path.exists(key_path):
-        print(
-            f"❌ Ошибка: SSL сертификаты не найдены по путям {cert_path} и {key_path}"
-        )
-        print(
-            "Пожалуйста, убедитесь, что файлы cert.pem и key.pem находятся в папке 'certs' рядом с main.py"
-        )
+        if not os.path.exists(cert_path) or not os.path.exists(key_path):
+            print(
+                f"❌ Ошибка: SSL сертификаты не найдены по путям {cert_path} и {key_path}"
+            )
+            print(
+                "Пожалуйста, убедитесь, что файлы cert.pem и key.pem находятся в папке 'certs' рядом с main.py"
+            )
+        else:
+            uvicorn.run(
+                "main:app",
+                host=config.HOST,
+                port=config.PORT,
+                reload=config.DEBUG,
+                log_level=config.LOG_LEVEL.lower(),
+                ssl_keyfile=key_path,
+                ssl_certfile=cert_path,
+            )
     else:
+        # Запуск без SSL
         uvicorn.run(
             "main:app",
-            host="0.0.0.0",
-            port=8000,
-            reload=True,
-            log_level="info",
-            ssl_keyfile=key_path,
-            ssl_certfile=cert_path,
+            host=config.HOST,
+            port=config.PORT,
+            reload=config.DEBUG,
+            log_level=config.LOG_LEVEL.lower(),
         )

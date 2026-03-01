@@ -16,31 +16,36 @@ import numpy as np
 from datetime import datetime
 from contextlib import contextmanager
 
+# Импортируем конфигурацию
+from config import config, get_api_url, get_ws_url, print_config
+
 # Подавляем ALSA и PortAudio ошибки
 os.environ["ALSA_PCM_CARD"] = "0"
 os.environ["ALSA_PCM_DEVICE"] = "0"
 os.environ["ALSA_LIB_EXTRA_VERBOSITY"] = "0"
 os.environ["ALSA_DEBUG_LEVEL"] = "0"
-os.environ["PYTHONWARNINGS"] = "ignore"
 
-# Подавляем предупреждения
-import logging
+# Подавляем предупреждения если настроено
+if not config.VERBOSE:
+    os.environ["PYTHONWARNINGS"] = "ignore"
+    import logging
 
-logging.getLogger().setLevel(logging.ERROR)
-import warnings
+    logging.getLogger().setLevel(logging.ERROR)
+    import warnings
 
 warnings.filterwarnings("ignore")
 
-# Конфигурация
-API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
-DEVICE_NAME = "Raspberry Pi Monitor"
-SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
-CHANNELS = 1
+# Выводим конфигурацию при запуске
+print_config()
+
+# Параметры из конфига
+SAMPLE_RATE = config.SAMPLE_RATE
+CHANNELS = config.CHANNELS
 FORMAT = pyaudio.paFloat32
 
 # ПЕРЕМЕННЫЕ УПРАВЛЕНИЯ ЧАСТОТОЙ (в секундах)
-LEVEL_UPDATE_INTERVAL = 1  # Интервал обновления уровня звука (дБ)
-DETECTION_INTERVAL = 30  # Интервал полной детекции звуков
+LEVEL_UPDATE_INTERVAL = config.AUDIO_LEVEL_UPDATE_INTERVAL
+DETECTION_INTERVAL = config.DETECTION_INTERVAL
 
 # Размер чанка для уровня звука
 CHUNK_DURATION = LEVEL_UPDATE_INTERVAL
@@ -93,7 +98,7 @@ class AudioClient:
             wifi_signal = self.get_wifi_signal()
 
             return {
-                "name": DEVICE_NAME,
+                "name": config.DEVICE_NAME,
                 "ip_address": ip_address,
                 "mac_address": mac,
                 "model": model_info["name"],
@@ -301,7 +306,7 @@ class AudioClient:
             print(f"🔗 MAC адрес: {device_info['mac_address']}")
 
             response = self.session.post(
-                f"{API_SERVER_URL}/register_device",
+                get_api_url("/register_device"),
                 json=device_info,
                 timeout=10,
             )
@@ -515,7 +520,7 @@ class AudioClient:
             }
 
             response = self.session.post(
-                f"{API_SERVER_URL}/detect_sound",
+                get_api_url("/detect_sound"),
                 json=payload,
                 timeout=30,  # Увеличиваем таймаут
             )
@@ -536,7 +541,7 @@ class AudioClient:
             # Пробуем еще раз с меньшим таймаутом
             try:
                 response = self.session.post(
-                    f"{API_SERVER_URL}/detect_sound",
+                    get_api_url("/detect_sound"),
                     json=payload,
                     timeout=15,
                 )
@@ -624,7 +629,7 @@ class AudioClient:
                 "timestamp": datetime.now().isoformat(),
             }
             self.session.post(
-                f"{API_SERVER_URL}/update_audio_level", json=payload, timeout=2
+                get_api_url("/update_audio_level"), json=payload, timeout=2
             )
         except:
             pass  # Игнорируем ошибки для быстрых обновлений дБ
@@ -657,7 +662,7 @@ class AudioClient:
                 }
 
                 response = self.session.put(
-                    f"{API_SERVER_URL}/update_device/{self.device_id}",
+                    get_api_url(f"/devices/{self.device_id}"),
                     json=payload,
                     timeout=5,
                 )
