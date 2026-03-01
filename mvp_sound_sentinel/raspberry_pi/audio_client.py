@@ -573,13 +573,13 @@ class AudioClient:
 
         try:
             while self.is_running:
-                # Определяем размер чанка
+                # Определяем размер чанка на основе интервала обновления
                 if hasattr(self, "fallback_sample_rate"):
                     chunk_size = int(self.fallback_sample_rate * LEVEL_UPDATE_INTERVAL)
                 else:
-                    chunk_size = CHUNK_SIZE
+                    chunk_size = int(SAMPLE_RATE * LEVEL_UPDATE_INTERVAL)
 
-                # Читаем аудио данные за 1 секунду
+                # Читаем аудио данные за интервал обновления
                 try:
                     raw_data = self.stream.read(chunk_size, exception_on_overflow=False)
                     audio_data = np.frombuffer(raw_data, dtype=np.float32)
