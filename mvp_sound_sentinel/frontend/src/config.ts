@@ -35,7 +35,7 @@ interface Config {
 // Получаем конфигурацию из переменных окружения или используем значения по умолчанию
 const getEnvConfig = (): Partial<Config> => {
   // API URL из переменной окружения или по умолчанию
-  const apiHost = import.meta.env.VITE_API_HOST || '192.168.0.94';
+  const apiHost = import.meta.env.VITE_API_HOST || '192.168.0.61';
   const apiPort = import.meta.env.VITE_API_PORT || '8000';
   const useSSL = import.meta.env.VITE_USE_SSL !== 'false';
   

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, AlertTriangle, Bell, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Bell } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 interface Notification {
@@ -19,15 +19,6 @@ interface Props {
 export function ImprovedNotificationManager({ onSoundDetected }: Props) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationSettings, setNotificationSettings] = useState<{
-    notification_sounds: string[];
-    excluded_sounds: string[];
-    custom_sounds: {name: string, type: string}[];
-  }>({
-    notification_sounds: [],
-    excluded_sounds: [],
-    custom_sounds: []
-  });
 
   // Загружаем настройки уведомлений
   useEffect(() => {
@@ -35,11 +26,10 @@ export function ImprovedNotificationManager({ onSoundDetected }: Props) {
       try {
         const devices = await apiClient.getDevices();
         if (devices.length > 0) {
-          const settings = await apiClient.getNotificationSettings(devices[0].id);
-          setNotificationSettings(settings);
+          await apiClient.getNotificationSettings(devices[0].id);
         }
       } catch (error) {
-        console.error('Error loading notification settings:', error);
+        console.error('Failed to load notification settings:', error);
       }
     };
     

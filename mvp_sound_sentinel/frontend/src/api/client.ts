@@ -192,8 +192,8 @@ class ApiClient {
 
   // Настройки уведомлений
   async getNotificationSettings(deviceId: string): Promise<{
-    notification_sounds: string[];
-    excluded_sounds: string[];
+    notification_sounds: { id: string; name: string }[];
+    excluded_sounds: { id: string; name: string }[];
     custom_sounds: { name: string; type: string }[];
   }> {
     return this.request(`/notification_settings/${deviceId}`);

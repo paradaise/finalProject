@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, Bell, BellOff, Volume2, Settings, Filter, Trash2 } from 'lucide-react';
+import { Bell, Filter, Plus, Search, Settings, Trash2, X } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 interface NotificationSound {
   name: string;
   type: 'notification' | 'excluded' | 'none';
   icon: string;
-  id?: string;
+  id: string;
   isCustom?: boolean;
 }
 
@@ -25,7 +25,6 @@ export function NotificationSettings({ onBack }: Props) {
   const [showYamnetModal, setShowYamnetModal] = useState(false);
   const [yamnetSearch, setYamnetSearch] = useState('');
   const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
-  const [customSounds, setCustomSounds] = useState<{name: string, type: string}[]>([]);
 
   // Загрузка всех звуков YAMNet
   useEffect(() => {
@@ -64,26 +63,28 @@ export function NotificationSettings({ onBack }: Props) {
       const processedSounds = new Set<string>(); // Для отслеживания уникальных звуков
       
       // Добавляем важные звуки
-      settings.notification_sounds.forEach((soundName: string) => {
-        if (!processedSounds.has(soundName)) {
+      settings.notification_sounds.forEach((sound) => {
+        if (!processedSounds.has(sound.name)) {
           sounds.push({
-            name: soundName,
+            name: sound.name,
             type: 'notification',
-            icon: getSoundIcon(soundName)
+            icon: getSoundIcon(sound.name),
+            id: sound.id
           });
-          processedSounds.add(soundName);
+          processedSounds.add(sound.name);
         }
       });
       
       // Добавляем исключенные звуки
-      settings.excluded_sounds.forEach((soundName: string) => {
-        if (!processedSounds.has(soundName)) {
+      settings.excluded_sounds.forEach((sound) => {
+        if (!processedSounds.has(sound.name)) {
           sounds.push({
-            name: soundName,
+            name: sound.name,
             type: 'excluded',
-            icon: getSoundIcon(soundName)
+            icon: getSoundIcon(sound.name),
+            id: sound.id
           });
-          processedSounds.add(soundName);
+          processedSounds.add(sound.name);
         }
       });
       
@@ -102,33 +103,19 @@ export function NotificationSettings({ onBack }: Props) {
             name: customSound.name,
             type: notificationType,
             icon: getSoundIcon(customSound.name),
-            isCustom: true
+            isCustom: true,
+            id: `custom-${customSound.name}` // Временный ID для пользовательских звуков
           });
           processedSounds.add(customSound.name);
         }
       });
       
-      setCustomSounds(settings.custom_sounds);
       setNotificationSounds(sounds);
       setLoading(false);
     } catch (error) {
       console.error('Error loading notification settings:', error);
       setLoading(false);
     }
-  };
-
-  const getDefaultNotificationType = (sound: string): 'notification' | 'excluded' | 'none' => {
-    // Временная логика - потом будет из БД
-    const criticalSounds = ['Baby cry', 'Fire', 'Fire alarm', 'Siren', 'Glass breaking', 'Smoke alarm'];
-    const excludedSounds = ['Speech', 'Silence', 'Music', 'Typing', 'Keyboard', 'Mouse'];
-    
-    if (criticalSounds.some(cs => sound.toLowerCase().includes(cs.toLowerCase()))) {
-      return 'notification';
-    }
-    if (excludedSounds.some(es => sound.toLowerCase().includes(es.toLowerCase()))) {
-      return 'excluded';
-    }
-    return 'none';
   };
 
   const getSoundIcon = (sound: string): string => {
@@ -214,23 +201,14 @@ export function NotificationSettings({ onBack }: Props) {
     }
   };
 
-  const saveSettings = async () => {
-    try {
-      // Настройки уже сохраняются в реальном времени при добавлении/удалении
-      alert('Настройки уведомлений сохранены!');
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      alert('Ошибка сохранения настроек');
-    }
-  };
-
   const addCustomSound = () => {
     if (customSound.trim() && currentDeviceId) {
       const newSound: NotificationSound = {
         name: customSound.trim(),
         type: 'notification',
         icon: getSoundIcon(customSound.trim()),
-        isCustom: true
+        isCustom: true,
+        id: `custom-${customSound.trim()}-${Date.now()}` // Временный ID
       };
       setNotificationSounds(prev => [...prev, newSound]);
       setCustomSound('');
@@ -248,7 +226,8 @@ export function NotificationSettings({ onBack }: Props) {
       const newSound: NotificationSound = {
         name: soundName,
         type: 'notification',
-        icon: getSoundIcon(soundName)
+        icon: getSoundIcon(soundName),
+        id: `yamnet-${soundName}-${Date.now()}` // Временный ID
       };
       setNotificationSounds(prev => [...prev, newSound]);
       setShowYamnetModal(false);
@@ -270,16 +249,14 @@ export function NotificationSettings({ onBack }: Props) {
       const sound = notificationSounds.find(s => s.name === soundName);
       if (!sound || sound.isCustom) return; // Нельзя удалять пользовательские звуки здесь
       
-      // Удаляем из соответствующей таблицы
+      // Удаляем из соответствующей таблицы используя ID
       if (sound.type === 'notification') {
-        const notificationSound = notificationSounds.find(s => s.name === soundName && s.type === 'notification');
-        if (notificationSound?.id) {
-          await apiClient.deleteNotificationSound(notificationSound.id);
+        if (sound.id) {
+          await apiClient.deleteNotificationSound(sound.id);
         }
       } else if (sound.type === 'excluded') {
-        const excludedSound = notificationSounds.find(s => s.name === soundName && s.type === 'excluded');
-        if (excludedSound?.id) {
-          await apiClient.deleteExcludedSound(excludedSound.id);
+        if (sound.id) {
+          await apiClient.deleteExcludedSound(sound.id);
         }
       }
       
@@ -295,14 +272,6 @@ export function NotificationSettings({ onBack }: Props) {
     !notificationSounds.some(ns => ns.name.toLowerCase() === sound.toLowerCase()) &&
     sound.toLowerCase().includes(yamnetSearch.toLowerCase())
   );
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'notification': return <Bell className="w-4 h-4 text-green-600" />;
-      case 'excluded': return <BellOff className="w-4 h-4 text-red-600" />;
-      default: return <Volume2 className="w-4 h-4 text-gray-400" />;
-    }
-  };
 
   const getNotificationLabel = (type: string) => {
     switch (type) {
@@ -355,17 +324,11 @@ export function NotificationSettings({ onBack }: Props) {
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => setShowYamnetModal(true)}
-                className="flex-1 sm:flex-none px-3 py-2 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
+                className="flex-1 sm:flex-none px-4 py-2.5 h-10 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Добавить из YAMNet</span>
                 <span className="sm:hidden">YAMNet</span>
-              </button>
-              <button
-                onClick={saveSettings}
-                className="flex-1 sm:flex-none px-3 py-2 h-10 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                Сохранить
               </button>
             </div>
           </div>
@@ -464,35 +427,64 @@ export function NotificationSettings({ onBack }: Props) {
                 {filteredSounds.map((sound, index) => (
                   <div
                     key={`${sound.name}-${index}`}
-                    className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${getNotificationColor(sound.type)}`}
+                    className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${getNotificationColor(sound.type)}`}
                     onClick={() => toggleNotificationType(sound.name)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{sound.icon}</span>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{sound.name}</h3>
-                          <p className="text-sm text-gray-600">{getNotificationLabel(sound.type)}</p>
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
+                      
+                      {/* Колонка 1: Название и состояние */}
                       <div className="flex items-center gap-2">
-                        {getNotificationIcon(sound.type)}
-                        {!sound.isCustom && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteSound(sound.name);
-                            }}
-                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group"
-                            title="Удалить звук"
-                          >
-                            <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-colors" />
-                          </button>
-                        )}
-                        <div className="text-xs text-gray-500">
-                          {sound.isCustom ? 'Пользовательский' : 'Кликните для изменения'}
+                        <span className="text-xl">{sound.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-gray-900 text-sm truncate">{sound.name}</h3>
+                          <p className="text-xs text-gray-600 truncate">{getNotificationLabel(sound.type)}</p>
                         </div>
                       </div>
+                      
+                      {/* Колонка 2: Колокольчик (состояние) */}
+                      <div className="flex justify-center">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                          sound.type === 'notification' ? 'bg-green-500' : 
+                          sound.type === 'excluded' ? 'bg-red-500' : 'bg-gray-300'
+                        }`}>
+                          <Bell className="w-3 h-3 text-white" />
+                        </div>
+                      </div>
+                      
+                      {/* Колонка 3: Тип источника */}
+                      <div className="text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          sound.isCustom 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {sound.isCustom ? 'Польз.' : 'YamNET'}
+                        </span>
+                      </div>
+                      
+                      {/* Колонка 4: Мусорка (удаление) */}
+                      <div className="flex justify-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSound(sound.name);
+                          }}
+                          disabled={sound.isCustom}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            sound.isCustom 
+                              ? 'bg-gray-100 cursor-not-allowed opacity-40' 
+                              : 'hover:bg-red-50 group'
+                          }`}
+                          title={sound.isCustom ? 'Удалить из настроек' : 'Удалить звук'}
+                        >
+                          <Trash2 className={`w-4 h-4 ${
+                            sound.isCustom 
+                              ? 'text-gray-300 line-through' 
+                              : 'text-gray-400 group-hover:text-red-600'
+                          }`} />
+                        </button>
+                      </div>
+                      
                     </div>
                   </div>
                 ))}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, AlertTriangle, Bell } from 'lucide-react';
+import { Bell, Trash2 } from 'lucide-react';
 import { isCriticalSound, isImportantSound, getSoundIcon, isExcludedSound } from '../data/criticalSounds';
 
 interface Notification {
@@ -11,6 +11,7 @@ interface Notification {
   timestamp: string;
   isCritical: boolean;
   isImportant: boolean;
+  isCustom: boolean;
 }
 
 interface Props {
@@ -54,6 +55,7 @@ export function NotificationManager({ customSounds, onSoundDetected }: Props) {
           timestamp,
           isCritical,
           isImportant: isImportant || isCustomImportant,
+          isCustom: isCustomImportant,
         };
         
         setNotifications(prev => {
@@ -99,7 +101,7 @@ export function NotificationManager({ customSounds, onSoundDetected }: Props) {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 max-w-sm">
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 max-w-sm sm:max-w-md lg:max-w-lg">
       {/* Кнопка сворачивания/разворачивания */}
       <div className="flex justify-end mb-2">
         <button
@@ -117,7 +119,7 @@ export function NotificationManager({ customSounds, onSoundDetected }: Props) {
 
       {/* Уведомления */}
       {isVisible && (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-96 overflow-y-auto">
           {notifications.map((notification) => (
             <NotificationItem
               key={notification.id}
@@ -147,57 +149,77 @@ interface NotificationItemProps {
 }
 
 function NotificationItem({ notification, onClose }: NotificationItemProps) {
-  const { soundType, confidence, deviceName, timestamp, isCritical, isImportant } = notification;
+  const { soundType, confidence, deviceName, timestamp, isCritical, isImportant, isCustom } = notification;
   
-  const bgColor = isCritical 
-    ? 'bg-red-50 border-red-200' 
-    : isImportant 
-    ? 'bg-yellow-50 border-yellow-200' 
-    : 'bg-blue-50 border-blue-200';
-    
-  const iconColor = isCritical 
-    ? 'text-red-600' 
-    : isImportant 
-    ? 'text-yellow-600' 
-    : 'text-blue-600';
-    
   const soundIcon = getSoundIcon(soundType);
+  
+  // Определяем цветовую схему
+  const borderColor = isCritical 
+    ? 'border-red-500 bg-red-50' 
+    : isImportant 
+    ? 'border-yellow-500 bg-yellow-50' 
+    : 'border-green-500 bg-green-50';
+    
+  const textColor = isCritical 
+    ? 'text-red-700' 
+    : isImportant 
+    ? 'text-yellow-700' 
+    : 'text-green-700';
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg border-2 ${bgColor} p-4 transform transition-all duration-300 animate-in slide-in-from-right`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3 flex-1">
-          {/* Иконка */}
-          <div className={`p-2 rounded-full ${bgColor}`}>
-            <span className="text-2xl">{soundIcon}</span>
+    <div className={`border-l-4 ${borderColor} p-3 transition-all duration-200 hover:shadow-sm`}>
+      <div className="flex items-center justify-between">
+        
+        {/* Левая часть: иконка + основная информация */}
+        <div className="flex items-center gap-3 flex-1">
+          {/* Компактная иконка */}
+          <div className={`w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm`}>
+            <span className="text-lg">{soundIcon}</span>
           </div>
           
-          {/* Контент */}
-          <div className="flex-1">
+          {/* Текстовая информация */}
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              {isCritical && <AlertTriangle className={`w-4 h-4 ${iconColor}`} />}
-              <h4 className="font-semibold text-gray-900">
-                {isCritical ? 'Критический звук!' : isImportant ? 'Важный звук!' : 'Звук обнаружен'}
-              </h4>
+              <h3 className="font-medium text-gray-900 text-sm truncate">
+                {soundType}
+              </h3>
+              <span className={`text-xs font-medium ${textColor}`}>
+                {isCritical ? '!' : isImportant ? '‼' : ''}
+              </span>
             </div>
             
-            <p className="text-gray-800 font-medium">{soundType}</p>
-            <p className="text-sm text-gray-600">
-              Уверенность: {(confidence * 100).toFixed(1)}%
-            </p>
-            <p className="text-xs text-gray-500">
-              {deviceName} • {new Date(timestamp).toLocaleTimeString()}
-            </p>
+            <div className="text-xs text-gray-500">
+              {deviceName} • {new Date(timestamp).toLocaleTimeString()} • {(confidence * 100).toFixed(1)}%
+            </div>
           </div>
         </div>
         
-        {/* Кнопка закрытия */}
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <X className="w-4 h-4 text-gray-400" />
-        </button>
+        {/* Правая часть: тип + удаление */}
+        <div className="flex items-center gap-2 ml-3">
+          {/* Тип источника */}
+          <span className={`text-xs px-1.5 py-0.5 rounded ${
+            isCustom 
+              ? 'bg-purple-100 text-purple-700' 
+              : 'bg-blue-100 text-blue-700'
+          }`}>
+            {isCustom ? 'П' : 'Y'}
+          </span>
+          
+          {/* Кнопка удаления */}
+          <button
+            onClick={onClose}
+            disabled={isCustom}
+            className={`p-1 rounded transition-colors ${
+              isCustom 
+                ? 'text-gray-300 cursor-not-allowed' 
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+            title={isCustom ? 'Удалить из настроек' : 'Удалить уведомление'}
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+        
       </div>
     </div>
   );

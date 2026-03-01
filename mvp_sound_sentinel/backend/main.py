@@ -1924,20 +1924,20 @@ async def get_notification_settings(device_id: str):
     # Получаем важные звуки
     cursor.execute(
         """
-        SELECT sound_name FROM notification_sounds WHERE device_id = ?
+        SELECT id, sound_name FROM notification_sounds WHERE device_id = ?
     """,
         (device_id,),
     )
-    notification_sounds = [row[0] for row in cursor.fetchall()]
+    notification_sounds = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
 
     # Получаем исключенные звуки
     cursor.execute(
         """
-        SELECT sound_name FROM excluded_sounds WHERE device_id = ?
+        SELECT id, sound_name FROM excluded_sounds WHERE device_id = ?
     """,
         (device_id,),
     )
-    excluded_sounds = [row[0] for row in cursor.fetchall()]
+    excluded_sounds = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
 
     # Получаем пользовательские звуки
     cursor.execute(

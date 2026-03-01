@@ -12,7 +12,6 @@ export function AudioLevelChart({ currentLevel = 0 }: Props) {
 
   // Sound Intensity Progress Bar
   const intensity = Math.min(100, Math.max(0, currentLevel));
-  const intensityColor = intensity > 80 ? 'bg-red-500' : intensity > 50 ? 'bg-orange-500' : intensity > 25 ? 'bg-yellow-500' : 'bg-green-500';
 
   useEffect(() => {
     const canvas = canvasRef.current;
