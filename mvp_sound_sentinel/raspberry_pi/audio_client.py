@@ -16,6 +16,11 @@ import numpy as np
 from datetime import datetime
 from contextlib import contextmanager
 
+# Подавляем предупреждения
+import warnings
+
+warnings.filterwarnings("ignore")
+
 # Импортируем конфигурацию
 from config import config, get_api_url, get_ws_url, print_config
 
@@ -31,9 +36,6 @@ if not config.VERBOSE:
     import logging
 
     logging.getLogger().setLevel(logging.ERROR)
-    import warnings
-
-warnings.filterwarnings("ignore")
 
 # Выводим конфигурацию при запуске
 print_config()
