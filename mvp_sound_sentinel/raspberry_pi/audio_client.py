@@ -32,7 +32,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Конфигурация
-API_SERVER_URL = "https://192.168.0.94:8000"  # IP вашего ПК с API сервером
+API_SERVER_URL = "https://192.168.0.61:8000"  # IP вашего ПК с API сервером
 DEVICE_NAME = "Raspberry Pi Monitor"
 SAMPLE_RATE = 16000  # YAMNet ожидает 16kHz
 CHANNELS = 1
