@@ -24,7 +24,7 @@ export function AddDeviceModal({ isOpen, onClose, onAddDevice }: Props) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://192.168.0.61:8000/register_device', {
+      const response = await fetch('https://192.168.0.94:8000/register_device', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
