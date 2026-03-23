@@ -419,9 +419,7 @@ class AudioClient:
                     chunk_size = CHUNK_SIZE
 
                 try:
-                    raw_data = self.stream.read(
-                        chunk_size, exception_on_overflow=False
-                    )
+                    raw_data = self.stream.read(chunk_size, exception_on_overflow=False)
                     audio_data = np.frombuffer(raw_data, dtype=np.float32)
                 except Exception as e:
                     print(f"❌ Ошибка чтения аудио: {e}")
@@ -542,4 +540,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Any, Dict
 
 import numpy as np
-import librosa  # Для ресемплинга аудио
 from fastapi import APIRouter
 
 from backend.api.simple.schemas import AudioData
@@ -24,11 +23,19 @@ async def detect_sound(audio_data: AudioData) -> Dict[str, Any]:
         # Конвертируем аудио в numpy array
         audio_np = np.array(audio_data.audio_data, dtype=np.float32)
 
-        # Ресемплинг до 16000 Hz если нужно
+        # Простой ресемплинг без librosa
         if audio_data.sample_rate != 16000:
-            audio_np = librosa.resample(
-                audio_np, orig_sr=audio_data.sample_rate, target_sr=16000
-            )
+            if audio_data.sample_rate == 44100:
+                # Даунсэмплинг с 44100 до 16000
+                step = audio_data.sample_rate // 16000  # 44100 // 16000 = 2
+                audio_np = audio_np[::step]
+                # Корректируем длину
+                target_length = int(len(audio_np) * 16000 / audio_data.sample_rate)
+                audio_np = audio_np[:target_length]
+                print(f"🔄 Ресемплинг: {audio_data.sample_rate} -> 16000 Hz")
+            else:
+                print(f"⚠️ Несовместимая частота {audio_data.sample_rate} Hz")
+                return {"sound_type": "error", "confidence": 0.0}
 
         # YAMNet ожидает аудио длиной 0.96 секунды (15300 сэмплов)
         # Если аудио короче, дополняем нулями
@@ -44,8 +51,26 @@ async def detect_sound(audio_data: AudioData) -> Dict[str, Any]:
         scores, embeddings, _spectrogram = state.model(audio_np)
 
         scores_np = scores.numpy()
+        print(f"🔍 Размер scores: {scores_np.shape}")
+
+        # Проверяем размер scores
+        if len(scores_np.shape) > 1:
+            scores_np = scores_np.flatten()
+
+        if len(scores_np) == 0:
+            print("❌ Пустой массив scores")
+            return {"sound_type": "error", "confidence": 0.0}
+
         max_index = int(np.argmax(scores_np))
         confidence = float(scores_np[max_index])
+
+        # Проверяем индекс
+        if max_index >= len(state.class_names):
+            print(
+                f"❌ Индекс {max_index} больше количества классов {len(state.class_names)}"
+            )
+            max_index = 0
+
         sound_type = (
             state.class_names[max_index]
             if max_index < len(state.class_names)
