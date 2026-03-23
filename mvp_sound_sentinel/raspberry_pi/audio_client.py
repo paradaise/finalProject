@@ -459,15 +459,7 @@ class AudioClient:
     def resample_audio(self, audio_data, original_rate, target_rate):
         """Ресемплинг аудио до целевой частоты"""
         try:
-            import librosa
-
-            # Используем librosa для ресемплинга
-            resampled = librosa.resample(
-                audio_data, orig_sr=original_rate, target_sr=target_rate
-            )
-            return resampled
-        except ImportError:
-            # Если librosa недоступен, используем простой линейный интерполяции
+            # Используем простой линейный интерполяции (без librosa)
             ratio = target_rate / original_rate
             new_length = int(len(audio_data) * ratio)
             resampled = np.interp(

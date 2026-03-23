@@ -8,15 +8,9 @@ import numpy as np
 def resample_audio(audio_data: Any, original_rate: int, target_rate: int):
     """Resample audio to target_rate.
 
-    Uses `librosa` when available; otherwise falls back to linear interpolation.
+    Uses simple linear interpolation (no librosa dependency).
     """
     try:
-        import librosa
-
-        return librosa.resample(
-            audio_data, orig_sr=original_rate, target_sr=target_rate
-        )
-    except ImportError:
         ratio = target_rate / original_rate
         new_length = int(len(audio_data) * ratio)
         return np.interp(
@@ -40,4 +34,3 @@ def calculate_db(audio_data) -> float:
     except Exception as e:
         print(f"❌ Ошибка расчета дБ: {e}")
         return -100.0
-
