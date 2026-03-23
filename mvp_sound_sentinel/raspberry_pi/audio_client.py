@@ -741,12 +741,15 @@ def suppress_alsa_errors():
 
 
 def main():
-    client = AudioClient()
-    try:
-        client.start()
-    except Exception as e:
-        print(f"❌ Критическая ошибка: {e}")
-        sys.exit(1)
+    # Ensure `raspberry_pi.*` imports work when this file is executed directly.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(script_dir)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+    from raspberry_pi.client.audio_client_app import main as modular_main
+
+    modular_main()
 
 
 if __name__ == "__main__":

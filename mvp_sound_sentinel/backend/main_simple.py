@@ -25,18 +25,40 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
+# Ensure `import backend.*` works even when uvicorn runs `main_simple:app` from `backend/`.
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.dirname(script_dir)
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+try:
+    from backend.env_loader import load_env_file
+
+    load_env_file()
+except Exception:
+    pass
+
+from backend.api.simple import state as simple_state
+from backend.api.simple.router import router as simple_router
+
 # Глобальные переменные
-db_path = "soundsentinel.db"
+db_path = os.getenv("DB_PATH", "soundsentinel.db")
 model = None
 class_names = []
 websocket_connections = set()
 
+# Keep shared state in sync with extracted route modules.
+simple_state.db_path = db_path
+simple_state.model = model
+simple_state.class_names = class_names
+simple_state.websocket_connections = websocket_connections
+
 # Хардкодированные настройки
-HOST = "0.0.0.0"
-PORT = 8000
-USE_SSL = True
-SSL_CERT_PATH = "certs/cert.pem"
-SSL_KEY_PATH = "certs/key.pem"
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", "8000"))
+USE_SSL = os.getenv("USE_SSL", "true").strip().lower() in {"1", "true", "yes", "y", "on"}
+SSL_CERT_PATH = os.getenv("SSL_CERT_PATH", "certs/cert.pem")
+SSL_KEY_PATH = os.getenv("SSL_KEY_PATH", "certs/key.pem")
 
 # Модели данных
 class DeviceRegistration(BaseModel):
@@ -68,7 +90,7 @@ class AudioLevel(BaseModel):
     timestamp: str
 
 # Инициализация FastAPI
-app = FastAPI(title="Sound Sentinel MVP", version="1.0.0")
+app = FastAPI(title="Sound Sentinel MVP", version="1.0.0", lifespan=lifespan)
 
 # CORS
 app.add_middleware(
@@ -86,6 +108,12 @@ async def lifespan(app: FastAPI):
     success = load_model()
     if not success:
         print("⚠️ Модель не загружена. Сервер будет работать в ограниченном режиме.")
+
+    # Update extracted route modules with runtime state.
+    simple_state.db_path = db_path
+    simple_state.model = model
+    simple_state.class_names = class_names
+    simple_state.websocket_connections = websocket_connections
     yield
     print("--- Server shutting down ---")
 
@@ -164,137 +192,7 @@ def load_model():
         return False
 
 # WebSocket функции
-async def broadcast_to_websockets(data):
-    if websocket_connections:
-        await asyncio.gather(
-            *[ws.send_json(data) for ws in websocket_connections],
-            return_exceptions=True
-        )
-
-# Эндпоинты
-@app.post("/register_device")
-async def register_device(device: DeviceRegistration):
-    device_id = str(uuid.uuid4())
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO devices 
-        (id, name, ip_address, mac_address, model, model_image_url, microphone_info, wifi_signal, status, last_seen)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'online', ?)
-    """, (
-        device_id, device.name, device.ip_address, device.mac_address,
-        device.model, device.model_image_url, device.microphone_info,
-        device.wifi_signal, datetime.now().isoformat()
-    ))
-    
-    conn.commit()
-    conn.close()
-    
-    await broadcast_to_websockets({
-        "type": "device_registered",
-        "device": device.dict()
-    })
-    
-    return {"device_id": device_id, "status": "registered"}
-
-@app.post("/detect_sound")
-async def detect_sound(audio_data: AudioData):
-    try:
-        if model is None:
-            return {"sound_type": "unknown", "confidence": 0.0}
-        
-        # Простая детекция
-        audio_np = np.array(audio_data.audio_data, dtype=np.float32)
-        scores, embeddings, spectrogram = model(audio_np)
-        
-        # Находим класс с максимальной вероятностью
-        scores_np = scores.numpy()
-        max_index = int(np.argmax(scores_np))
-        confidence = float(scores_np[0, max_index])
-        sound_type = class_names[max_index] if max_index < len(class_names) else "unknown"
-        
-        # Сохраняем детекцию
-        detection_id = str(uuid.uuid4())
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO sound_detections 
-            (id, device_id, sound_type, confidence, timestamp, embeddings)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            detection_id, audio_data.device_id, sound_type, confidence,
-            audio_data.timestamp, str(embeddings.numpy().tolist())
-        ))
-        
-        conn.commit()
-        conn.close()
-        
-        # Рассылаем через WebSocket
-        await broadcast_to_websockets({
-            "type": "sound_detected",
-            "detection": {
-                "id": detection_id,
-                "device_id": audio_data.device_id,
-                "sound_type": sound_type,
-                "confidence": confidence,
-                "timestamp": audio_data.timestamp
-            }
-        })
-        
-        return {"sound_type": sound_type, "confidence": confidence}
-        
-    except Exception as e:
-        print(f"❌ Ошибка детекции: {e}")
-        return {"sound_type": "error", "confidence": 0.0}
-
-@app.get("/devices")
-async def get_devices():
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT * FROM devices ORDER BY created_at DESC")
-    devices = []
-    
-    for row in cursor.fetchall():
-        devices.append({
-            "id": row[0],
-            "name": row[1],
-            "ip_address": row[2],
-            "mac_address": row[3],
-            "model": row[4],
-            "model_image_url": row[5],
-            "microphone_info": row[6],
-            "wifi_signal": row[7],
-            "status": row[8],
-            "last_seen": row[9],
-            "created_at": row[10]
-        })
-    
-    conn.close()
-    return {"devices": devices}
-
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "model_loaded": model is not None,
-        "devices_connected": len(websocket_connections),
-        "timestamp": datetime.now().isoformat(),
-    }
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    websocket_connections.add(websocket)
-    
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        websocket_connections.remove(websocket)
+app.include_router(simple_router)
 
 if __name__ == "__main__":
     print("🚀 Запуск Sound Sentinel API сервера...")
@@ -303,8 +201,14 @@ if __name__ == "__main__":
     
     # Пути к сертификатам
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    cert_path = os.path.join(script_dir, SSL_CERT_PATH)
-    key_path = os.path.join(script_dir, SSL_KEY_PATH)
+    cert_path = (
+        SSL_CERT_PATH
+        if os.path.isabs(SSL_CERT_PATH)
+        else os.path.join(script_dir, SSL_CERT_PATH)
+    )
+    key_path = (
+        SSL_KEY_PATH if os.path.isabs(SSL_KEY_PATH) else os.path.join(script_dir, SSL_KEY_PATH)
+    )
     
     if not os.path.exists(cert_path) or not os.path.exists(key_path):
         print(f"❌ Ошибка: SSL сертификаты не найдены")

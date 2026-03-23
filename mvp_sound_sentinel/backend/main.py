@@ -5,6 +5,7 @@ Sound Sentinel MVP - API Server
 """
 
 import os
+import sys
 import sqlite3
 import json
 import uuid
@@ -29,6 +30,19 @@ from contextlib import asynccontextmanager
 
 # Получаем абсолютный путь к директории, где находится скрипт
 script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Ensure `import backend.*` works even when uvicorn runs `main:app` from `backend/`.
+repo_root = os.path.dirname(script_dir)
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+try:
+    from backend.env_loader import load_env_file
+
+    load_env_file()
+except Exception:
+    # Never break server startup because of .env problems.
+    pass
 
 
 @asynccontextmanager
@@ -57,7 +71,7 @@ app.add_middleware(
 )
 
 # Глобальные переменные
-db_path = "soundsentinel.db"
+db_path = os.getenv("DB_PATH", "soundsentinel.db")
 model = None
 class_names = []
 websocket_connections = set()
@@ -190,6 +204,9 @@ class ExcludedSound(BaseModel):
 # Инициализация базы данных
 def init_database():
     """Создание таблиц в SQLite"""
+    from backend.database.init_db import init_database as init_database_impl
+    init_database_impl(db_path)
+    return
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -282,6 +299,10 @@ def load_model():
     """Загрузка предобученной модели YAMNet"""
     global model, class_names
     try:
+        from backend.utils.yamnet import load_yamnet_model as _load_yamnet_model_impl
+
+        model, class_names = _load_yamnet_model_impl()
+        return True
         print("🔄 Загрузка YAMNet модели...")
 
         # Очищаем кэш если есть проблемы
@@ -322,6 +343,9 @@ def load_model():
 def extract_embeddings(audio_data: List[float]) -> List[float]:
     """Извлечение YAMNet embeddings из аудио"""
     try:
+        from backend.utils.yamnet import extract_embeddings as _extract_embeddings_impl
+
+        return _extract_embeddings_impl(audio_data, model)
         # Конвертация в numpy array
         audio_np = np.array(audio_data, dtype=np.float32)
 
@@ -345,6 +369,11 @@ def extract_embeddings(audio_data: List[float]) -> List[float]:
 def cosine_similarity(a: List[float], b: List[float]) -> float:
     """Вычисление косинусного расстояния"""
     try:
+        from backend.utils.similarity import (
+            cosine_similarity as _cosine_similarity_impl,
+        )
+
+        return _cosine_similarity_impl(a, b)
         a_np = np.array(a)
         b_np = np.array(b)
 
@@ -365,6 +394,11 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 def find_best_custom_match(embedding: List[float], device_id: str) -> dict:
     """Поиск лучшего совпадения embedding с custom sounds"""
     try:
+        from backend.utils.custom_matching import (
+            find_best_custom_match as _find_best_custom_match_impl,
+        )
+
+        return _find_best_custom_match_impl(embedding, device_id, db_path)
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
@@ -469,6 +503,11 @@ def find_best_custom_match(embedding: List[float], device_id: str) -> dict:
 # Проверка настроек уведомлений
 def should_send_notification(device_id: str, sound_type: str) -> bool:
     """Проверяет нужно ли отправлять уведомление для данного звука"""
+    from backend.utils.notifications import (
+        should_send_notification as _should_send_notification_impl,
+    )
+
+    return _should_send_notification_impl(db_path, device_id, sound_type)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -521,6 +560,9 @@ def should_send_notification(device_id: str, sound_type: str) -> bool:
 def detect_sound(audio_data: List[float]) -> Dict:
     """Детекция звука с помощью YAMNet"""
     try:
+        from backend.utils.yamnet import detect_sound as _detect_sound_impl
+
+        return _detect_sound_impl(audio_data, model, class_names)
         # Конвертация в numpy array
         audio_np = np.array(audio_data, dtype=np.float32)
 
@@ -551,6 +593,11 @@ def detect_sound(audio_data: List[float]) -> Dict:
 # WebSocket менеджер
 async def broadcast_to_websockets(message: dict):
     """Рассылка сообщения всем подключенным WebSocket клиентам"""
+    from backend.api.ws import (
+        broadcast_to_websockets as _broadcast_to_websockets_impl,
+    )
+
+    return await _broadcast_to_websockets_impl(message, websocket_connections)
     if websocket_connections:
         message_str = json.dumps(message)
         disconnected = set()
@@ -1976,8 +2023,22 @@ if __name__ == "__main__":
     # Запуск сервера с SSL
     # Пути к сертификатам теперь абсолютные
     script_dir = os.path.dirname(__file__)
-    cert_path = os.path.join(script_dir, "certs", "cert.pem")
-    key_path = os.path.join(script_dir, "certs", "key.pem")
+    ssl_cert_path = os.getenv("SSL_CERT_PATH", os.path.join("certs", "cert.pem"))
+    ssl_key_path = os.getenv("SSL_KEY_PATH", os.path.join("certs", "key.pem"))
+
+    cert_path = (
+        ssl_cert_path
+        if os.path.isabs(ssl_cert_path)
+        else os.path.join(script_dir, ssl_cert_path)
+    )
+    key_path = (
+        ssl_key_path
+        if os.path.isabs(ssl_key_path)
+        else os.path.join(script_dir, ssl_key_path)
+    )
+
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
 
     if not os.path.exists(cert_path) or not os.path.exists(key_path):
         print(
@@ -1989,8 +2050,8 @@ if __name__ == "__main__":
     else:
         uvicorn.run(
             "main:app",
-            host="0.0.0.0",
-            port=8000,
+            host=host,
+            port=port,
             reload=True,
             log_level="info",
             ssl_keyfile=key_path,
