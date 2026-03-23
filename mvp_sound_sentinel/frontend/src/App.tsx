@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
-import { DeviceList } from './components/DeviceList';
-import { DeviceDetail } from './components/DeviceDetail';
-import { CustomSounds } from './components/CustomSounds';
-import { NotificationSettings } from './components/NotificationSettings';
-import { ImprovedNotificationManager } from './components/ImprovedNotifications';
-import { Activity } from 'lucide-react';
-import { apiClient } from './api/client';
+import { useState, useEffect } from "react";
+import { DeviceList } from "./components/DeviceList";
+import { DeviceDetail } from "./components/DeviceDetail";
+import { CustomSounds } from "./components/CustomSounds";
+import { NotificationSettings } from "./components/NotificationSettings";
+import { ImprovedNotificationManager } from "./components/ImprovedNotifications";
+import { Activity } from "lucide-react";
+import { apiClient } from "./api/client";
 
-type Screen = 'devices' | 'device-detail' | 'custom-sounds' | 'notification-settings';
+type Screen =
+  | "devices"
+  | "device-detail"
+  | "custom-sounds"
+  | "notification-settings";
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('devices');
+  const [currentScreen, setCurrentScreen] = useState<Screen>("devices");
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [devices, setDevices] = useState<any[]>([]);
   const [detections, setDetections] = useState<{ [key: string]: any[] }>({});
@@ -21,45 +25,52 @@ export default function App() {
   // Загрузка данных
   useEffect(() => {
     loadData();
-    
+
     // WebSocket для реального времени
     const ws = apiClient.connectWebSocket((data) => {
-      console.log('📡 WebSocket received:', data);
-      
-      if (data.type === 'device_registered') {
-        setDevices(prev => [...prev, {
-          id: data.device_id,
-          name: data.name,
-          status: data.status,
-          ip_address: '',
-          last_seen: new Date().toISOString()
-        }]);
-      } else if (data.type === 'sound_detected') {
-        console.log('🔊 Sound detected in App:', {
+      console.log("📡 WebSocket received:", data);
+
+      if (data.type === "device_registered") {
+        setDevices((prev) => [
+          ...prev,
+          {
+            id: data.device_id,
+            name: data.name,
+            status: data.status,
+            ip_address: "",
+            last_seen: new Date().toISOString(),
+          },
+        ]);
+      } else if (data.type === "sound_detected") {
+        console.log("🔊 Sound detected in App:", {
           sound_type: data.sound_type,
           confidence: data.confidence,
-          should_notify: data.should_notify
+          should_notify: data.should_notify,
         });
-        
-        setDetections(prev => ({
+
+        setDetections((prev) => ({
           ...prev,
           [data.device_id]: [
             {
               id: data.detection_id,
               sound_type: data.sound_type,
               confidence: data.confidence,
-              timestamp: data.timestamp
+              timestamp: data.timestamp,
             },
-            ...(prev[data.device_id] || [])
-          ].slice(0, 50)
+            ...(prev[data.device_id] || []),
+          ].slice(0, 50),
         }));
-        
+
         // Отправляем событие для уведомлений
-        console.log('📤 Dispatching soundDetected event with:', data);
-        window.dispatchEvent(new CustomEvent('soundDetected', { detail: data }));
-      } else if (data.type === 'audio_level_updated') {
+        console.log("📤 Dispatching soundDetected event with:", data);
+        window.dispatchEvent(
+          new CustomEvent("soundDetected", { detail: data }),
+        );
+      } else if (data.type === "audio_level_updated") {
         // Пробрасываем событие уровня звука для компонентов, которым это нужно (например, графику в DeviceDetail)
-        window.dispatchEvent(new CustomEvent('audioLevelUpdated', { detail: data }));
+        window.dispatchEvent(
+          new CustomEvent("audioLevelUpdated", { detail: data }),
+        );
       }
     });
 
@@ -72,26 +83,29 @@ export default function App() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Загрузка устройств
-      const devicesData = await apiClient.getDevices();
+      const devicesResponse = await apiClient.getDevices() as any;
+      const devicesData = devicesResponse.devices || devicesResponse; // Поддерживаем оба формата
       setDevices(devicesData);
-      
+
       // Загрузка детекций для каждого устройства (убираем ограничение)
       const detectionsData: { [key: string]: any[] } = {};
       for (const device of devicesData) {
-        const deviceDetections = await apiClient.getDeviceEvents(device.id, 1000);
+        const deviceDetections = await apiClient.getDeviceEvents(
+          device.id,
+          1000,
+        );
         detectionsData[device.id] = deviceDetections;
       }
       setDetections(detectionsData);
-      
+
       // Загрузка пользовательских звуков
       const soundsData = await apiClient.getCustomSounds();
       setCustomSounds(soundsData);
-      
     } catch (err) {
-      setError('Ошибка загрузки данных. Проверьте подключение к API.');
-      console.error('Load data error:', err);
+      setError("Ошибка загрузки данных. Проверьте подключение к API.");
+      console.error("Load data error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +113,7 @@ export default function App() {
 
   const handleSelectDevice = (deviceId: string) => {
     setSelectedDeviceId(deviceId);
-    setCurrentScreen('device-detail');
+    setCurrentScreen("device-detail");
   };
 
   const handleCustomSounds = () => {
@@ -110,12 +124,12 @@ export default function App() {
       // Если устройств несколько и ничего не выбрано, выбираем первое
       setSelectedDeviceId(devices[0].id);
     }
-    setCurrentScreen('custom-sounds');
+    setCurrentScreen("custom-sounds");
   };
 
   const handleBack = () => {
     setSelectedDeviceId(null);
-    setCurrentScreen('devices');
+    setCurrentScreen("devices");
   };
 
   // Loading state
@@ -130,7 +144,9 @@ export default function App() {
             <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto animate-ping opacity-20"></div>
           </div>
           <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
-          <p className="text-gray-600 font-medium text-sm sm:text-base">Загрузка Sound Sentinel...</p>
+          <p className="text-gray-600 font-medium text-sm sm:text-base">
+            Загрузка Sound Sentinel...
+          </p>
         </div>
       </div>
     );
@@ -145,9 +161,11 @@ export default function App() {
             <span className="text-white font-bold text-xl sm:text-2xl">!</span>
           </div>
           <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-100 max-w-sm sm:max-w-md">
-            <h3 className="text-base sm:text-lg font-bold text-red-600 mb-2">Ошибка подключения</h3>
+            <h3 className="text-base sm:text-lg font-bold text-red-600 mb-2">
+              Ошибка подключения
+            </h3>
             <p className="text-gray-600 text-sm sm:text-base mb-4">{error}</p>
-            <button 
+            <button
               onClick={loadData}
               className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 font-medium text-sm sm:text-base group"
             >
@@ -166,53 +184,50 @@ export default function App() {
       <ImprovedNotificationManager
         onSoundDetected={(data: any) => {
           // Обработка звуковых событий для обновления детекций
-          if (data.type === 'sound_detected') {
-            setDetections(prev => ({
+          if (data.type === "sound_detected") {
+            setDetections((prev) => ({
               ...prev,
               [data.device_id]: [
                 {
                   id: data.detection_id,
                   sound_type: data.sound_type,
                   confidence: data.confidence,
-                  timestamp: data.timestamp
+                  timestamp: data.timestamp,
                 },
-                ...(prev[data.device_id] || [])
-              ].slice(0, 50)
+                ...(prev[data.device_id] || []),
+              ].slice(0, 50),
             }));
           }
         }}
       />
-      
-      {currentScreen === 'devices' && (
+
+      {currentScreen === "devices" && (
         <DeviceList
           devices={devices}
           detections={detections}
           onSelectDevice={handleSelectDevice}
           onCustomSounds={handleCustomSounds}
-          onNotificationSettings={() => setCurrentScreen('notification-settings')}
+          onNotificationSettings={() =>
+            setCurrentScreen("notification-settings")
+          }
         />
       )}
-      
-      {currentScreen === 'device-detail' && selectedDeviceId && (
-        <DeviceDetail
-          deviceId={selectedDeviceId}
-          onBack={handleBack}
-        />
+
+      {currentScreen === "device-detail" && selectedDeviceId && (
+        <DeviceDetail deviceId={selectedDeviceId} onBack={handleBack} />
       )}
-      
-      {currentScreen === 'custom-sounds' && (
-        <CustomSounds 
+
+      {currentScreen === "custom-sounds" && (
+        <CustomSounds
           sounds={customSounds}
-          onBack={() => setCurrentScreen('devices')}
+          onBack={() => setCurrentScreen("devices")}
           onRefresh={loadData}
           selectedDeviceId={selectedDeviceId || undefined}
         />
       )}
-      
-      {currentScreen === 'notification-settings' && (
-        <NotificationSettings 
-          onBack={() => setCurrentScreen('devices')}
-        />
+
+      {currentScreen === "notification-settings" && (
+        <NotificationSettings onBack={() => setCurrentScreen("devices")} />
       )}
     </div>
   );

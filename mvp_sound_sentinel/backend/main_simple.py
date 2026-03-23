@@ -56,9 +56,16 @@ simple_state.websocket_connections = websocket_connections
 # Хардкодированные настройки
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
-USE_SSL = os.getenv("USE_SSL", "true").strip().lower() in {"1", "true", "yes", "y", "on"}
+USE_SSL = os.getenv("USE_SSL", "true").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "y",
+    "on",
+}
 SSL_CERT_PATH = os.getenv("SSL_CERT_PATH", "certs/cert.pem")
 SSL_KEY_PATH = os.getenv("SSL_KEY_PATH", "certs/key.pem")
+
 
 # Модели данных
 class DeviceRegistration(BaseModel):
@@ -71,11 +78,13 @@ class DeviceRegistration(BaseModel):
     microphone_info: Optional[str] = None
     wifi_signal: int = 0
 
+
 class AudioData(BaseModel):
     device_id: str
     audio_data: List[float]
     sample_rate: int = 16000
     db_level: Optional[float] = None
+
 
 class SoundDetection(BaseModel):
     device_id: str
@@ -84,23 +93,21 @@ class SoundDetection(BaseModel):
     timestamp: str
     audio_data: List[float]
 
+
 class AudioLevel(BaseModel):
     device_id: str
     db_level: float
     timestamp: str
 
-# Инициализация FastAPI
-app = FastAPI(title="Sound Sentinel MVP", version="1.0.0", lifespan=lifespan)
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+class DeviceUpdate(BaseModel):
+    wifi_signal: Optional[int] = None
+    microphone_info: Optional[str] = None
+    status: Optional[str] = None
+    last_seen: Optional[str] = None
 
+
+# Инициализация lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("--- Server starting up ---")
@@ -114,15 +121,32 @@ async def lifespan(app: FastAPI):
     simple_state.model = model
     simple_state.class_names = class_names
     simple_state.websocket_connections = websocket_connections
+
     yield
+
     print("--- Server shutting down ---")
+
+
+# Инициализация FastAPI
+app = FastAPI(title="Sound Sentinel MVP", version="1.0.0", lifespan=lifespan)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Инициализация базы данных
 def init_database():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
-    cursor.execute("""
+
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS devices (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -136,9 +160,11 @@ def init_database():
             last_seen TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
-    """)
-    
-    cursor.execute("""
+    """
+    )
+
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS sound_detections (
             id TEXT PRIMARY KEY,
             device_id TEXT NOT NULL,
@@ -148,32 +174,36 @@ def init_database():
             embeddings TEXT,
             FOREIGN KEY (device_id) REFERENCES devices (id)
         )
-    """)
-    
+    """
+    )
+
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована")
+
 
 # Загрузка модели
 def load_model():
     global model, class_names
     try:
         print("🔄 Загрузка YAMNet модели...")
-        
+
         # Очищаем кэш
         import tempfile
-        cache_dir = os.path.join(tempfile.gettempdir(), 'tfhub_modules')
+
+        cache_dir = os.path.join(tempfile.gettempdir(), "tfhub_modules")
         if os.path.exists(cache_dir):
             import shutil
+
             try:
                 shutil.rmtree(cache_dir)
                 print("🧹 Старый кэш TensorFlow Hub удалён")
             except:
                 pass
-        
+
         # Загружаем модель
         model = hub.load("https://tfhub.dev/google/yamnet/1")
-        
+
         # Загружаем классы
         class_names_path = tf.keras.utils.get_file(
             "yamnet_class_map.csv",
@@ -184,12 +214,154 @@ def load_model():
             next(f)
             for line in f:
                 class_names.append(line.strip().split(",")[2])
-        
+
         print(f"✅ YAMNet модель загружена. Классов: {len(class_names)}")
         return True
     except Exception as e:
         print(f"❌ Ошибка загрузки модели: {e}")
         return False
+
+
+# Дополнительные роуты
+@app.post("/update_audio_level")
+async def update_audio_level(data: AudioLevel):
+    """Обновление только уровня звука без детекции"""
+    # Отправляем в WebSocket
+    for ws in websocket_connections:
+        try:
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "audio_level_updated",
+                        "device_id": data.device_id,
+                        "db_level": data.db_level,
+                        "timestamp": data.timestamp,
+                    }
+                )
+            )
+        except:
+            pass
+    return {"status": "success"}
+
+
+@app.put("/update_device/{device_id}")
+async def update_device(device_id: str, device_update: DeviceUpdate):
+    """Обновление информации об устройстве"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Обновляем только переданные поля
+        update_fields = []
+        update_values = []
+
+        if device_update.wifi_signal is not None:
+            update_fields.append("wifi_signal = ?")
+            update_values.append(device_update.wifi_signal)
+
+        if device_update.microphone_info is not None:
+            update_fields.append("microphone_info = ?")
+            update_values.append(device_update.microphone_info)
+
+        if device_update.status is not None:
+            update_fields.append("status = ?")
+            update_values.append(device_update.status)
+
+        if device_update.last_seen is not None:
+            update_fields.append("last_seen = ?")
+            update_values.append(device_update.last_seen)
+
+        if update_fields:
+            update_values.append(device_id)
+            cursor.execute(
+                f"""
+                UPDATE devices 
+                SET {', '.join(update_fields)}
+                WHERE id = ?
+            """,
+                update_values,
+            )
+            conn.commit()
+
+        conn.close()
+        return {"status": "updated"}
+    except Exception as e:
+        print(f"❌ Ошибка обновления устройства: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update device")
+
+
+@app.get("/detections/{device_id}")
+async def get_detections(device_id: str, limit: int = 1000):
+    """Получение детекций для устройства"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Сначала получаем общее количество
+    cursor.execute(
+        "SELECT COUNT(*) FROM sound_detections WHERE device_id = ?", (device_id,)
+    )
+    total_count = cursor.fetchone()[0]
+
+    # Затем получаем детекции с лимитом
+    cursor.execute(
+        """
+        SELECT id, sound_type, confidence, timestamp, embeddings
+        FROM sound_detections
+        WHERE device_id = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+    """,
+        (device_id, limit),
+    )
+
+    detections = []
+    for row in cursor.fetchall():
+        detections.append(
+            {
+                "id": row[0],
+                "sound_type": row[1],
+                "confidence": row[2],
+                "timestamp": row[3],
+                "embeddings": json.loads(row[4]) if row[4] else [],
+            }
+        )
+
+    conn.close()
+    return {"detections": detections, "total_count": total_count}
+
+
+@app.get("/custom_sounds")
+async def get_custom_sounds():
+    """Получение пользовательских звуков"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, name, sound_type, embeddings, centroid, threshold, device_id, created_at
+        FROM custom_sounds
+        ORDER BY created_at DESC
+    """
+    )
+
+    sounds = []
+    for row in cursor.fetchall():
+        sounds.append(
+            {
+                "id": row[0],
+                "name": row[1],
+                "sound_type": row[2],
+                "embeddings": json.loads(row[3]) if row[3] else [],
+                "centroid": json.loads(row[4]) if row[4] else [],
+                "threshold": row[5],
+                "device_id": row[6],
+                "created_at": row[7],
+            }
+        )
+
+    conn.close()
+    return sounds
+
 
 # WebSocket функции
 app.include_router(simple_router)
@@ -198,7 +370,7 @@ if __name__ == "__main__":
     print("🚀 Запуск Sound Sentinel API сервера...")
     print(f"📡 Сервер будет доступен на https://{HOST}:{PORT}")
     print(f"🔗 WebSocket: wss://{HOST}:{PORT}/ws")
-    
+
     # Пути к сертификатам
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cert_path = (
@@ -207,9 +379,11 @@ if __name__ == "__main__":
         else os.path.join(script_dir, SSL_CERT_PATH)
     )
     key_path = (
-        SSL_KEY_PATH if os.path.isabs(SSL_KEY_PATH) else os.path.join(script_dir, SSL_KEY_PATH)
+        SSL_KEY_PATH
+        if os.path.isabs(SSL_KEY_PATH)
+        else os.path.join(script_dir, SSL_KEY_PATH)
     )
-    
+
     if not os.path.exists(cert_path) or not os.path.exists(key_path):
         print(f"❌ Ошибка: SSL сертификаты не найдены")
         print(f"cert_path: {cert_path}")
