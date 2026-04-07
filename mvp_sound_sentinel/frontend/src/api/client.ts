@@ -1,6 +1,6 @@
 // Для локальной сети с HTTPS - заменить на IP твоего ПК
 // Узнать свой IP: ipconfig (Windows) или ifconfig (Mac/Linux)
-const API_BASE_URL = 'https://192.168.0.61:8000'; // Замени на свой IP
+const API_BASE_URL = "https://192.168.0.61:8000"; // Замени на свой IP
 
 export interface Device {
   id: string;
@@ -132,7 +132,7 @@ class ApiClient {
   // Очистка истории детекций
   async clearDeviceDetections(deviceId: string): Promise<any> {
     return this.request(`/devices/${deviceId}/detections`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -154,14 +154,27 @@ class ApiClient {
 
     ws.onopen = () => {
       console.log("WebSocket connected");
+      // Начинаем heartbeat
+      setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send("ping");
+        }
+      }, 30000); // Каждые 30 секунд
     };
 
     ws.onmessage = (event) => {
       try {
+        // Пропускаем ping/pong сообщения
+        if (event.data === "pong") {
+          return;
+        }
         const data = JSON.parse(event.data);
         onMessage(data);
       } catch (error) {
-        console.error("WebSocket message error:", error);
+        // Игнорируем ошибки JSON для ping/pong
+        if (event.data !== "pong") {
+          console.error("WebSocket message error:", error);
+        }
       }
     };
 

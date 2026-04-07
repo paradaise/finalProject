@@ -20,10 +20,11 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+import time
 
 # Ensure `import backend.*` works even when uvicorn runs `main_simple:app` from `backend/`.
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -140,6 +141,23 @@ app.add_middleware(
 )
 
 
+# Middleware для логирования запросов
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+
+    # Логируем запрос
+    print(f"📥 {request.method} {request.url}")
+
+    response = await call_next(request)
+
+    # Логируем ответ
+    process_time = time.time() - start_time
+    print(f"📤 {response.status_code} - {process_time:.3f}s")
+
+    return response
+
+
 # Инициализация базы данных
 def init_database():
     conn = sqlite3.connect(db_path)
@@ -175,6 +193,59 @@ def init_database():
             FOREIGN KEY (device_id) REFERENCES devices (id)
         )
     """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS custom_sounds (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            sound_type TEXT NOT NULL,
+            embeddings TEXT,
+            centroid TEXT,
+            threshold REAL DEFAULT 0.8,
+            device_id TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (device_id) REFERENCES devices (id)
+        )
+    """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notification_sounds (
+            id TEXT PRIMARY KEY,
+            sound_name TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (device_id) REFERENCES devices (id),
+            UNIQUE(sound_name, device_id)
+        )
+    """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS excluded_sounds (
+            id TEXT PRIMARY KEY,
+            sound_name TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (device_id) REFERENCES devices (id),
+            UNIQUE(sound_name, device_id)
+        )
+    """
+    )
+
+    # Sync legacy/default custom thresholds with environment default.
+    default_match_threshold = float(os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.75"))
+    cursor.execute(
+        """
+        UPDATE custom_sounds
+        SET threshold = ?
+        WHERE threshold IS NULL OR ABS(threshold - 0.75) < 0.000001
+        """,
+        (default_match_threshold,),
     )
 
     conn.commit()
@@ -226,8 +297,8 @@ def load_model():
 @app.post("/update_audio_level")
 async def update_audio_level(data: AudioLevel):
     """Обновление только уровня звука без детекции"""
-    # Отправляем в WebSocket
-    for ws in websocket_connections:
+    dead_connections = []
+    for ws in list(websocket_connections):
         try:
             await ws.send_text(
                 json.dumps(
@@ -239,8 +310,11 @@ async def update_audio_level(data: AudioLevel):
                     }
                 )
             )
-        except:
-            pass
+        except Exception:
+            dead_connections.append(ws)
+
+    for ws in dead_connections:
+        websocket_connections.discard(ws)
     return {"status": "success"}
 
 
@@ -328,39 +402,6 @@ async def get_detections(device_id: str, limit: int = 1000):
 
     conn.close()
     return {"detections": detections, "total_count": total_count}
-
-
-@app.get("/custom_sounds")
-async def get_custom_sounds():
-    """Получение пользовательских звуков"""
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT id, name, sound_type, embeddings, centroid, threshold, device_id, created_at
-        FROM custom_sounds
-        ORDER BY created_at DESC
-    """
-    )
-
-    sounds = []
-    for row in cursor.fetchall():
-        sounds.append(
-            {
-                "id": row[0],
-                "name": row[1],
-                "sound_type": row[2],
-                "embeddings": json.loads(row[3]) if row[3] else [],
-                "centroid": json.loads(row[4]) if row[4] else [],
-                "threshold": row[5],
-                "device_id": row[6],
-                "created_at": row[7],
-            }
-        )
-
-    conn.close()
-    return sounds
 
 
 # WebSocket функции

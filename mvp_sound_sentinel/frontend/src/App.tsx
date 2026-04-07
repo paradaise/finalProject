@@ -34,10 +34,10 @@ export default function App() {
         setDevices((prev) => [
           ...prev,
           {
-            id: data.device_id,
-            name: data.name,
-            status: data.status,
-            ip_address: "",
+            id: data.device?.id || data.device_id,
+            name: data.device?.name || data.name,
+            status: data.device?.status || 'online',
+            ip_address: data.device?.ip_address || "",
             last_seen: new Date().toISOString(),
           },
         ]);

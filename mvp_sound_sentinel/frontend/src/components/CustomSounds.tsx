@@ -21,6 +21,7 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
   const [soundName, setSoundName] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordings, setRecordings] = useState<Float32Array[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatTime = (timestamp: string) => {
     try {
@@ -56,13 +57,15 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
     console.log('New recordings length:', newRecordings.length);
     setRecordings(newRecordings);
     
-    // Если записали 3 раза, автоматически добавляем звук
-    if (newRecordings.length >= 3) {
-      setTimeout(() => handleAddSound(), 100); // Небольшая задержка для обновления состояния
-    }
+    // Не автосохраняем: пользователь явно нажимает "Добавить звук",
+    // чтобы избежать двойной отправки запроса.
   };
 
   const handleAddSound = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     console.log('handleAddSound called:', { 
       soundName: soundName.trim(), 
       recordingsLength: recordings.length, 
@@ -86,6 +89,7 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
     }
 
     try {
+      setIsSubmitting(true);
       // Отправляем аудио записи для тренировки на бэкенде
       // Бэкенд сам извлечет YAMNet embeddings и вычислит centroid
       await apiClient.trainCustomSound({
@@ -93,7 +97,6 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
         sound_type: soundType,
         device_id: selectedDeviceId,
         audio_recordings: recordings.map(r => Array.from(r)), // Конвертируем Float32Array в массив
-        threshold: 0.75
       });
       
       // Сброс формы
@@ -106,6 +109,8 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
     } catch (error) {
       console.error('Error adding sound:', error);
       alert('Ошибка добавления звука');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -295,10 +300,10 @@ export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Pr
                 </button>
                 <button
                   onClick={handleAddSound}
-                  disabled={!soundName.trim() || recordings.length === 0}
+                  disabled={!soundName.trim() || recordings.length === 0 || isSubmitting}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Добавить звук
+                  {isSubmitting ? 'Сохранение...' : 'Добавить звук'}
                 </button>
               </div>
             </div>

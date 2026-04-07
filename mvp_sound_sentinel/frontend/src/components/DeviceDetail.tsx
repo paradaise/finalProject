@@ -88,8 +88,9 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
       setLoading(true);
       
       // Загружаем информацию об устройстве
-      const devices = await apiClient.getDevices();
-      const currentDevice = devices.find(d => d.id === deviceId);
+      const devicesResponse = await apiClient.getDevices();
+      const devices = Array.isArray(devicesResponse) ? devicesResponse : (devicesResponse as any).devices || [];
+      const currentDevice = devices.find((d: any) => d.id === deviceId);
       setDevice(currentDevice);
 
       // Загружаем детекции (получаем общее количество)
