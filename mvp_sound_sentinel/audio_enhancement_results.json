@@ -10,7 +10,7 @@
       "crest_factor": 1.4142354537990816,
       "zero_crossing_rate": 0.05503125,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 713.6594774832677
+      "spectral_centroid": 713.6594774832689
     },
     "enhanced_analysis": {
       "rms": 0.0,
@@ -32,7 +32,7 @@
       "rms_change": -100.0,
       "peak_reduction": 29.999995626354696,
       "snr_improvement": 0.0,
-      "spectral_centroid_change": -713.6594774832677
+      "spectral_centroid_change": -713.6594774832689
     }
   },
   "noise": {
@@ -41,34 +41,34 @@
       "description": "Random white noise"
     },
     "original_analysis": {
-      "rms": 0.20090851587384653,
-      "peak": 0.8549303424992687,
-      "crest_factor": 4.255321576493514,
-      "zero_crossing_rate": 0.49528125,
-      "dominant_frequency": 1013.5,
-      "spectral_centroid": 3988.3067997564804
+      "rms": 0.1995647535868711,
+      "peak": 0.8155517428253853,
+      "crest_factor": 4.086652217724276,
+      "zero_crossing_rate": 0.4931875,
+      "dominant_frequency": 3692.5,
+      "spectral_centroid": 3978.1426560764708
     },
     "enhanced_analysis": {
-      "rms": 0.23917895860856248,
-      "peak": 1.5541289985680036,
-      "crest_factor": 6.4977663905271585,
-      "zero_crossing_rate": 0.0920625,
-      "dominant_frequency": 7552.0,
-      "spectral_centroid": 4002.051111654045
+      "rms": 0.23705064976133705,
+      "peak": 1.5271808313747763,
+      "crest_factor": 6.442424152443135,
+      "zero_crossing_rate": 0.08890625,
+      "dominant_frequency": 4354.5,
+      "spectral_centroid": 4009.4916528584495
     },
     "metrics": {
-      "original_rms": 0.20090851587384653,
-      "enhanced_rms": 0.23917895860856248,
-      "original_peak": 0.8549303424992687,
-      "enhanced_peak": 1.5541289985680036,
+      "original_rms": 0.1995647535868711,
+      "enhanced_rms": 0.23705064976133705,
+      "original_peak": 0.8155517428253853,
+      "enhanced_peak": 1.5271808313747763,
       "snr_db": 50.0,
       "enhancement_applied": true
     },
     "improvements": {
-      "rms_change": 19.04869117581185,
-      "peak_reduction": -69.91986560687349,
+      "rms_change": 18.7838260518024,
+      "peak_reduction": -71.1629088549391,
       "snr_improvement": 0.0,
-      "spectral_centroid_change": 13.744311897564785
+      "spectral_centroid_change": 31.348996781978713
     }
   },
   "noisy": {
@@ -77,34 +77,34 @@
       "description": "Signal with moderate noise"
     },
     "original_analysis": {
-      "rms": 0.260933069373831,
-      "peak": 0.8650647925136187,
-      "crest_factor": 3.315274658706698,
-      "zero_crossing_rate": 0.20878125,
+      "rms": 0.2599415785621177,
+      "peak": 0.9019440287747226,
+      "crest_factor": 3.469795150756103,
+      "zero_crossing_rate": 0.2106875,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3932.564081194619
+      "spectral_centroid": 3949.3155674928757
     },
     "enhanced_analysis": {
-      "rms": 0.21110848966676793,
-      "peak": 1.646542561459682,
-      "crest_factor": 7.799508982602872,
-      "zero_crossing_rate": 0.051125,
+      "rms": 0.20969058591595105,
+      "peak": 1.7173281243525325,
+      "crest_factor": 8.189819856962382,
+      "zero_crossing_rate": 0.0495,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3981.5932966987807
+      "spectral_centroid": 3978.1692854903
     },
     "metrics": {
-      "original_rms": 0.260933069373831,
-      "enhanced_rms": 0.21110848966676793,
-      "original_peak": 0.8650647925136187,
-      "enhanced_peak": 1.646542561459682,
+      "original_rms": 0.2599415785621177,
+      "enhanced_rms": 0.20969058591595105,
+      "original_peak": 0.9019440287747226,
+      "enhanced_peak": 1.7173281243525325,
       "snr_db": 50.0,
       "enhancement_applied": true
     },
     "improvements": {
-      "rms_change": -19.09477393058251,
-      "peak_reduction": -78.14777689460634,
+      "rms_change": -19.3316486435656,
+      "peak_reduction": -81.538409557781,
       "snr_improvement": 0.0,
-      "spectral_centroid_change": 49.029215504161584
+      "spectral_centroid_change": 28.853717997424155
     }
   },
   "quiet": {
@@ -113,34 +113,34 @@
       "description": "Low amplitude signal with noise"
     },
     "original_analysis": {
-      "rms": 0.04039402995519992,
-      "peak": 0.1312123763510085,
-      "crest_factor": 3.2483111117294583,
-      "zero_crossing_rate": 0.1685625,
+      "rms": 0.04048473812496451,
+      "peak": 0.1213856663128591,
+      "crest_factor": 2.9983068172054654,
+      "zero_crossing_rate": 0.16634375,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3938.234608515896
+      "spectral_centroid": 3940.0876613958635
     },
     "enhanced_analysis": {
-      "rms": 0.10705063031212028,
-      "peak": 0.8530309408775212,
-      "crest_factor": 7.96848125406078,
-      "zero_crossing_rate": 0.039875,
+      "rms": 0.1017117210882203,
+      "peak": 0.8284641657821477,
+      "crest_factor": 8.14521823953381,
+      "zero_crossing_rate": 0.0355,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 4021.053045826117
+      "spectral_centroid": 3991.8361427534965
     },
     "metrics": {
-      "original_rms": 0.04039402995519992,
-      "enhanced_rms": 0.10705063031212028,
-      "original_peak": 0.1312123763510085,
-      "enhanced_peak": 0.8530309408775212,
+      "original_rms": 0.04048473812496451,
+      "enhanced_rms": 0.1017117210882203,
+      "original_peak": 0.1213856663128591,
+      "enhanced_peak": 0.8284641657821477,
       "snr_db": 50.0,
       "enhancement_applied": true
     },
     "improvements": {
-      "rms_change": 165.01597001053784,
-      "peak_reduction": -72.18185645265127,
+      "rms_change": 151.23472646473851,
+      "peak_reduction": -70.70784994692886,
       "snr_improvement": 0.0,
-      "spectral_centroid_change": 82.81843731022082
+      "spectral_centroid_change": 51.748481357632954
     }
   },
   "clipped": {
@@ -149,12 +149,12 @@
       "description": "Signal with clipping distortion"
     },
     "original_analysis": {
-      "rms": 0.6088043123668705,
+      "rms": 0.6088234386025965,
       "peak": 0.99,
-      "crest_factor": 1.6261382843218395,
-      "zero_crossing_rate": 0.1539375,
+      "crest_factor": 1.6260871990610282,
+      "zero_crossing_rate": 0.15184375,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3943.177639551447
+      "spectral_centroid": 3914.2530934505635
     },
     "enhanced_analysis": {
       "rms": 0.0,
@@ -165,7 +165,7 @@
       "spectral_centroid": 0
     },
     "metrics": {
-      "original_rms": 0.6088043123668705,
+      "original_rms": 0.6088234386025965,
       "enhanced_rms": 0.0,
       "original_peak": 0.99,
       "enhanced_peak": 0.0,
@@ -176,7 +176,7 @@
       "rms_change": -100.0,
       "peak_reduction": 99.0,
       "snr_improvement": 0.0,
-      "spectral_centroid_change": -3943.177639551447
+      "spectral_centroid_change": -3914.2530934505635
     }
   },
   "realistic": {
@@ -185,34 +185,34 @@
       "description": "Simulated real-world audio with multiple issues"
     },
     "original_analysis": {
-      "rms": 0.13158282247186362,
-      "peak": 0.549410010423706,
-      "crest_factor": 4.175393110610516,
-      "zero_crossing_rate": 0.31103125,
+      "rms": 0.13366375621462126,
+      "peak": 0.6526831382796243,
+      "crest_factor": 4.883022569196872,
+      "zero_crossing_rate": 0.302125,
       "dominant_frequency": 200.0,
-      "spectral_centroid": 3843.045735850176
+      "spectral_centroid": 3840.0627188373287
     },
     "enhanced_analysis": {
-      "rms": 0.24668714012782966,
-      "peak": 1.476917712344665,
-      "crest_factor": 5.987007314525386,
-      "zero_crossing_rate": 0.0809375,
+      "rms": 0.25165311340923363,
+      "peak": 1.6090237705510022,
+      "crest_factor": 6.393816268565045,
+      "zero_crossing_rate": 0.0861875,
       "dominant_frequency": 200.0,
-      "spectral_centroid": 3889.370340944316
+      "spectral_centroid": 3880.1077572436207
     },
     "metrics": {
-      "original_rms": 0.13158282247186362,
-      "enhanced_rms": 0.24668714012782966,
-      "original_peak": 0.549410010423706,
-      "enhanced_peak": 1.476917712344665,
+      "original_rms": 0.13366375621462126,
+      "enhanced_rms": 0.25165311340923363,
+      "original_peak": 0.6526831382796243,
+      "enhanced_peak": 1.6090237705510022,
       "snr_db": 50.0,
       "enhancement_applied": true
     },
     "improvements": {
-      "rms_change": 87.47670516079621,
-      "peak_reduction": -92.75077019209591,
+      "rms_change": 88.27326160515734,
+      "peak_reduction": -95.63406322713779,
       "snr_improvement": 0.0,
-      "spectral_centroid_change": 46.324605094140225
+      "spectral_centroid_change": 40.04503840629195
     }
   }
 }

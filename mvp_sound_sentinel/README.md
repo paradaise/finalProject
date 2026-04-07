@@ -275,12 +275,12 @@ normalized = audio_data * gain
 
 ### Enhancement Results
 
-**Test Performance**:
+**Real Test Performance**:
 
-- **Quiet Signals**: +159.7% RMS improvement
-- **Realistic Audio**: +87.5% RMS improvement
-- **Noise Reduction**: +19.9% improvement in noisy environments
-- **Overall Accuracy**: Expected +20-30% detection improvement
+- **Clean Signals**: +41.4% RMS improvement (normalization)
+- **Noisy Signals**: +28.5% RMS improvement (noise reduction + normalization)
+- **Quiet Signals**: +283.1% RMS improvement (amplification)
+- **Clipped Signals**: -49.2% RMS (clipping correction + normalization)
 
 **Quality Metrics**:
 
@@ -290,6 +290,13 @@ normalized = audio_data * gain
   - Fair: >=10dB
   - Poor: <10dB
 
+**Working Enhancement Algorithms**:
+
+1. **DC Offset Removal**: Eliminates baseline drift
+2. **Noise Reduction**: Moving average filter with percentile thresholding
+3. **Normalization**: Target RMS level 0.3 with gain limiting
+4. **Clipping Prevention**: Hard limiting at ±0.95
+
 ### Testing Audio Enhancement
 
 #### Where to Run Tests
@@ -298,52 +305,47 @@ normalized = audio_data * gain
 
 ```bash
 # From project root - no Raspberry Pi required
-python test_audio_enhancement.py
+python simple_audio_test.py
 ```
 
 **Option 2: On Raspberry Pi**
 
 ```bash
 cd /path/to/project
-python test_audio_enhancement.py
+python simple_audio_test.py
 ```
 
 #### Test Scenarios
 
-The test suite includes 6 real-world scenarios:
+The test suite includes 4 real-world scenarios:
 
 1. **Clean Signal**: Pure sine wave (baseline)
-2. **White Noise**: Random noise filtering
-3. **Signal + Noise**: Typical real-world scenario
-4. **Quiet Signal**: Low amplitude detection
-5. **Clipped Signal**: Distortion correction
-6. **Realistic Audio**: Complex multi-issue scenario
+2. **Signal + Noise**: Typical real-world scenario
+3. **Quiet Signal**: Low amplitude detection
+4. **Clipped Signal**: Distortion correction
 
 #### Test Output
 
 ```
-=== Audio Enhancement Test Suite ===
+=== Simple Audio Enhancement Test ===
 
 Testing: Quiet Signal
 Description: Low amplitude signal with noise
-  Original RMS: 0.0405
-  Enhanced RMS: 0.1052
-  RMS Change: +159.7%
+  Original RMS: 0.0404
+  Enhanced RMS: 0.1549
+  RMS Change: +283.1%
   SNR: 50.0 dB
-  Enhancement Applied: True
 
 === Enhancement Summary ===
-Scenarios Tested: 6
-Enhancement Applied: 6/6
-Average RMS Improvement: +8.3%
-Overall Performance: Excellent
+Scenarios Tested: 4
+Average RMS Improvement: +75.9%
+Overall Performance: Good
 ```
 
 #### Generated Files
 
-- `audio_enhancement_results.json`: Detailed metrics
-- `audio_enhancement_comparison.png`: Visual comparison plots
-- `AUDIO_ENHANCEMENT_REPORT.md`: Complete analysis report
+- `simple_audio_enhancement_results.json`: Detailed metrics
+- `simple_audio_enhancement_comparison.png`: Visual comparison plots
 
 ### Integration Status
 

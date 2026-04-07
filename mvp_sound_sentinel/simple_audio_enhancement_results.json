@@ -1,0 +1,110 @@
+{
+  "clean": {
+    "scenario": {
+      "name": "Clean Signal (440Hz tone)",
+      "description": "Pure sine wave, no noise"
+    },
+    "original_analysis": {
+      "rms": 0.21212871976703218,
+      "peak": 0.299999956263547,
+      "crest_factor": 1.4142354537990816,
+      "zero_crossing_rate": 0.05503125,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 713.6594774832689
+    },
+    "enhanced_analysis": {
+      "rms": 0.3,
+      "peak": 0.49554423653551366,
+      "crest_factor": 1.6518141217850455,
+      "zero_crossing_rate": 0.055,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 3322.9220035570343
+    },
+    "improvements": {
+      "rms_change": 41.423565997792,
+      "peak_reduction": -19.554428027196668,
+      "spectral_centroid_change": 2609.2625260737655
+    }
+  },
+  "noisy": {
+    "scenario": {
+      "name": "Signal + Noise",
+      "description": "Signal with moderate noise"
+    },
+    "original_analysis": {
+      "rms": 0.23452957713354902,
+      "peak": 0.6509788662342612,
+      "crest_factor": 2.775679188060668,
+      "zero_crossing_rate": 0.13265625,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 3907.8565915072527
+    },
+    "enhanced_analysis": {
+      "rms": 0.3,
+      "peak": 0.9394192264550164,
+      "crest_factor": 3.1313974215167213,
+      "zero_crossing_rate": 0.13240625,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 4057.464180640485
+    },
+    "improvements": {
+      "rms_change": 27.91563591536683,
+      "peak_reduction": -28.844036022075525,
+      "spectral_centroid_change": 149.60758913323252
+    }
+  },
+  "quiet": {
+    "scenario": {
+      "name": "Quiet Signal",
+      "description": "Low amplitude signal with noise"
+    },
+    "original_analysis": {
+      "rms": 0.040444262414352034,
+      "peak": 0.1300077381664602,
+      "crest_factor": 3.2144915101808285,
+      "zero_crossing_rate": 0.1685625,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 3928.662392291626
+    },
+    "enhanced_analysis": {
+      "rms": 0.15463733444843683,
+      "peak": 0.5348978981909762,
+      "crest_factor": 3.459047584458562,
+      "zero_crossing_rate": 0.1685,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 4108.372817770704
+    },
+    "improvements": {
+      "rms_change": 282.34677854716494,
+      "peak_reduction": -40.489016002451606,
+      "spectral_centroid_change": 179.71042547907837
+    }
+  },
+  "clipped": {
+    "scenario": {
+      "name": "Clipped Signal",
+      "description": "Signal with clipping distortion"
+    },
+    "original_analysis": {
+      "rms": 0.591600278614171,
+      "peak": 0.99,
+      "crest_factor": 1.673427203785441,
+      "zero_crossing_rate": 0.10340625,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 3898.9183203481557
+    },
+    "enhanced_analysis": {
+      "rms": 0.3,
+      "peak": 0.6550844251023533,
+      "crest_factor": 2.183614750341178,
+      "zero_crossing_rate": 0.10334375,
+      "dominant_frequency": 440.0,
+      "spectral_centroid": 4002.415013353398
+    },
+    "improvements": {
+      "rms_change": -49.29008473377452,
+      "peak_reduction": 33.491557489764666,
+      "spectral_centroid_change": 103.49669300524238
+    }
+  }
+}
