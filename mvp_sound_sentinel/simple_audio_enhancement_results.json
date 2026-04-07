@@ -10,20 +10,20 @@
       "crest_factor": 1.4142354537990816,
       "zero_crossing_rate": 0.05503125,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 713.6594774832689
+      "spectral_centroid": 713.6594774832677
     },
     "enhanced_analysis": {
       "rms": 0.3,
-      "peak": 0.49554423653551366,
+      "peak": 0.4955442365355136,
       "crest_factor": 1.6518141217850455,
       "zero_crossing_rate": 0.055,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3322.9220035570343
+      "spectral_centroid": 3322.922003557034
     },
     "improvements": {
       "rms_change": 41.423565997792,
-      "peak_reduction": -19.554428027196668,
-      "spectral_centroid_change": 2609.2625260737655
+      "peak_reduction": -19.554428027196664,
+      "spectral_centroid_change": 2609.262526073766
     }
   },
   "noisy": {
@@ -32,25 +32,25 @@
       "description": "Signal with moderate noise"
     },
     "original_analysis": {
-      "rms": 0.23452957713354902,
-      "peak": 0.6509788662342612,
-      "crest_factor": 2.775679188060668,
-      "zero_crossing_rate": 0.13265625,
+      "rms": 0.23374025270162144,
+      "peak": 0.6619998712097024,
+      "crest_factor": 2.8322031124642066,
+      "zero_crossing_rate": 0.13503125,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3907.8565915072527
+      "spectral_centroid": 3923.9371644468165
     },
     "enhanced_analysis": {
-      "rms": 0.3,
-      "peak": 0.9394192264550164,
-      "crest_factor": 3.1313974215167213,
-      "zero_crossing_rate": 0.13240625,
+      "rms": 0.2999988570931365,
+      "peak": 0.95,
+      "crest_factor": 3.166678730729519,
+      "zero_crossing_rate": 0.13521875,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 4057.464180640485
+      "spectral_centroid": 4084.2316151994933
     },
     "improvements": {
-      "rms_change": 27.91563591536683,
-      "peak_reduction": -28.844036022075525,
-      "spectral_centroid_change": 149.60758913323252
+      "rms_change": 28.34710907756943,
+      "peak_reduction": -28.800012879029758,
+      "spectral_centroid_change": 160.29445075267677
     }
   },
   "quiet": {
@@ -59,25 +59,25 @@
       "description": "Low amplitude signal with noise"
     },
     "original_analysis": {
-      "rms": 0.040444262414352034,
-      "peak": 0.1300077381664602,
-      "crest_factor": 3.2144915101808285,
-      "zero_crossing_rate": 0.1685625,
+      "rms": 0.040659203120356785,
+      "peak": 0.13804393703831966,
+      "crest_factor": 3.3951461525128956,
+      "zero_crossing_rate": 0.1669375,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3928.662392291626
+      "spectral_centroid": 3928.741613409117
     },
     "enhanced_analysis": {
-      "rms": 0.15463733444843683,
-      "peak": 0.5348978981909762,
-      "crest_factor": 3.459047584458562,
-      "zero_crossing_rate": 0.1685,
+      "rms": 0.15562650928593819,
+      "peak": 0.49112902374813866,
+      "crest_factor": 3.15581854275077,
+      "zero_crossing_rate": 0.16725,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 4108.372817770704
+      "spectral_centroid": 4098.006213460296
     },
     "improvements": {
-      "rms_change": 282.34677854716494,
-      "peak_reduction": -40.489016002451606,
-      "spectral_centroid_change": 179.71042547907837
+      "rms_change": 282.7583851686972,
+      "peak_reduction": -35.308508670981894,
+      "spectral_centroid_change": 169.26460005117906
     }
   },
   "clipped": {
@@ -86,25 +86,25 @@
       "description": "Signal with clipping distortion"
     },
     "original_analysis": {
-      "rms": 0.591600278614171,
+      "rms": 0.5904826421302797,
       "peak": 0.99,
-      "crest_factor": 1.673427203785441,
-      "zero_crossing_rate": 0.10340625,
+      "crest_factor": 1.6765945844375452,
+      "zero_crossing_rate": 0.10275,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 3898.9183203481557
+      "spectral_centroid": 3894.096235964198
     },
     "enhanced_analysis": {
       "rms": 0.3,
-      "peak": 0.6550844251023533,
-      "crest_factor": 2.183614750341178,
-      "zero_crossing_rate": 0.10334375,
+      "peak": 0.6554167289980989,
+      "crest_factor": 2.184722429993663,
+      "zero_crossing_rate": 0.1026875,
       "dominant_frequency": 440.0,
-      "spectral_centroid": 4002.415013353398
+      "spectral_centroid": 4004.3821290797327
     },
     "improvements": {
-      "rms_change": -49.29008473377452,
-      "peak_reduction": 33.491557489764666,
-      "spectral_centroid_change": 103.49669300524238
+      "rms_change": -49.19410350189257,
+      "peak_reduction": 33.45832710019011,
+      "spectral_centroid_change": 110.28589311553469
     }
   }
 }
