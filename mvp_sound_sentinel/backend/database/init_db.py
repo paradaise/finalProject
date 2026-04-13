@@ -18,12 +18,27 @@ def init_database(db_path: str) -> None:
             model_image_url TEXT,
             microphone_info TEXT,
             wifi_signal INTEGER DEFAULT 0,
+            cpu_usage REAL DEFAULT 0,
+            device_temperature REAL DEFAULT 0,
             status TEXT DEFAULT 'offline',
             last_seen TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
+
+    # Migration: Add new columns if they don't exist
+    try:
+        cursor.execute("ALTER TABLE devices ADD COLUMN cpu_usage REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        cursor.execute(
+            "ALTER TABLE devices ADD COLUMN device_temperature REAL DEFAULT 0"
+        )
+    except sqlite3.OperationalError:
+        pass  # Column already exists
 
     # Table: sound_detections
     cursor.execute(
@@ -88,4 +103,3 @@ def init_database(db_path: str) -> None:
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована")
-

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wifi, Volume2, Clock, Activity, Mic, Globe, ArrowLeft, Cpu, Trash2 } from 'lucide-react';
+import { Wifi, Volume2, Clock, Activity, Mic, Globe, ArrowLeft, Cpu, Trash2, Signal } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { getSoundIcon } from '../data/criticalSounds';
 import { AudioLevelChart } from './AudioLevelChart';
@@ -211,8 +211,8 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-600 font-medium">Микрофон</p>
-                <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.microphone_info || 'Неизвестно'}</p>
+                <p className="text-xs text-gray-600 font-medium">ID</p>
+                <p className="font-bold font-mono text-xs sm:text-sm text-gray-900 break-all">{device.id}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
@@ -220,17 +220,30 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 <Wifi className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-600 font-medium">WiFi сигнал</p>
+                <p className="text-xs text-gray-600 font-medium">WiFi</p>
                 <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.wifi_signal}%</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-200 group hover:shadow-lg transition-all duration-200 cursor-pointer">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-600 font-medium">ID устройства</p>
-                <p className="font-bold font-mono text-xs sm:text-sm text-gray-900 break-all">{device.id}</p>
+                <p className="text-xs text-gray-600 font-medium">CPU</p>
+                <p className="font-semibold text-gray-900 text-sm sm:text-base">{device.cpu_usage || 0}%</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
+                <Signal className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-medium">Temp</p>
+                <p className={`font-semibold text-gray-900 text-sm sm:text-base ${
+                  device.device_temperature > 70 ? 'text-red-600' : 
+                  device.device_temperature > 50 ? 'text-yellow-600' : 
+                  'text-green-600'
+                }`}>{device.device_temperature || 0}°C</p>
               </div>
             </div>
           </div>

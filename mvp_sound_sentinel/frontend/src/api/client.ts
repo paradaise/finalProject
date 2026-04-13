@@ -11,6 +11,8 @@ export interface Device {
   model_image_url?: string;
   microphone_info?: string;
   wifi_signal: number;
+  cpu_usage: number;
+  device_temperature: number;
   status: string;
   last_seen: string;
   created_at: string;

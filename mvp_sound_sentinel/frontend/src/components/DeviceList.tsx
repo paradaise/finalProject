@@ -229,13 +229,35 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                             <p className="font-medium text-gray-900 text-sm sm:text-base">{device.microphone_info || 'Неизвестно'}</p>
                           </div>
                           <div>
-                            <p className="text-gray-600 text-xs sm:text-sm">WiFi сигнал</p>
+                            <p className="text-gray-600 text-xs sm:text-sm">WiFi</p>
                             <div className="flex items-center gap-2">
                               <div className="flex items-center">
                                 {getWifiSignalBars(device.wifi_signal)}
                               </div>
                               <span className={`font-medium text-sm sm:text-base ${getWifiSignalColor(device.wifi_signal)}`}>
                                 {device.wifi_signal}%
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 text-xs sm:text-sm">CPU</p>
+                            <div className="flex items-center gap-2">
+                              <Activity className="w-4 h-4 text-blue-500" />
+                              <span className="font-medium text-sm sm:text-base text-blue-600">
+                                {device.cpu_usage || 0}%
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 text-xs sm:text-sm">Temp</p>
+                            <div className="flex items-center gap-2">
+                              <Signal className="w-4 h-4 text-orange-500" />
+                              <span className={`font-medium text-sm sm:text-base ${
+                                device.device_temperature > 70 ? 'text-red-600' : 
+                                device.device_temperature > 50 ? 'text-yellow-600' : 
+                                'text-green-600'
+                              }`}>
+                                {device.device_temperature || 0}°C
                               </span>
                             </div>
                           </div>

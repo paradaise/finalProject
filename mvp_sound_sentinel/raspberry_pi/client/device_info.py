@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import socket
 import uuid
+import psutil
+import subprocess
 from typing import Dict
 
 
@@ -72,7 +74,10 @@ def get_raspberry_pi_model() -> Dict[str, str]:
                             break
 
         if not model_name:
-            return {"name": "Raspberry Pi", "image_url": "/images/raspberry-pi-default.png"}
+            return {
+                "name": "Raspberry Pi",
+                "image_url": "/images/raspberry-pi-default.png",
+            }
 
         return {"name": model_name, "image_url": get_model_image_url(model_name)}
     except:
@@ -123,7 +128,9 @@ def get_wifi_signal() -> int:
         import subprocess
 
         # Prefer nmcli
-        result = subprocess.run(["nmcli", "dev", "wifi"], capture_output=True, text=True)
+        result = subprocess.run(
+            ["nmcli", "dev", "wifi"], capture_output=True, text=True
+        )
         if result.returncode == 0:
             lines = result.stdout.split("\n")
             for line in lines:
@@ -177,6 +184,8 @@ def collect_device_info(device_name: str) -> Dict[str, str]:
         model_info = get_raspberry_pi_model()
         microphone_info = get_microphone_info()
         wifi_signal = get_wifi_signal()
+        cpu_usage = get_cpu_usage()
+        device_temperature = get_device_temperature()
 
         return {
             "name": device_name,
@@ -186,8 +195,47 @@ def collect_device_info(device_name: str) -> Dict[str, str]:
             "model_image_url": model_info["image_url"],
             "microphone_info": microphone_info,
             "wifi_signal": wifi_signal,
+            "cpu_usage": cpu_usage,
+            "device_temperature": device_temperature,
         }
     except Exception as e:
         print(f"❌ Ошибка получения информации об устройстве: {e}")
         return None
 
+
+def get_cpu_usage() -> float:
+    """Get current CPU usage percentage."""
+    try:
+        return psutil.cpu_percent(interval=1)
+    except:
+        return 0.0
+
+
+def get_device_temperature() -> float:
+    """Get device temperature in Celsius."""
+    try:
+        # Try to get temperature from vcgencmd (Raspberry Pi specific)
+        result = subprocess.run(
+            ["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            # Output format: "temp=45.5'C"
+            temp_str = result.stdout.strip()
+            if "temp=" in temp_str:
+                temp_value = temp_str.split("=")[1].replace("'C", "")
+                return float(temp_value)
+    except:
+        pass
+
+    try:
+        # Fallback to psutil temperature sensors
+        temps = psutil.sensors_temperatures()
+        if temps:
+            # Try common sensor names
+            for sensor_name in ["cpu_thermal", "coretemp", "acpitz"]:
+                if sensor_name in temps:
+                    return temps[sensor_name][0].current
+    except:
+        pass
+
+    return 0.0
