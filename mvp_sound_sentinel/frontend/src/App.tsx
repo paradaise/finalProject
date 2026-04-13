@@ -18,7 +18,7 @@ export default function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [devices, setDevices] = useState<any[]>([]);
   const [detections, setDetections] = useState<{ [key: string]: any[] }>({});
-  const [customSounds, setCustomSounds] = useState<any[]>([]);
+  const [customSounds, setCustomSounds] = useState<{ [key: string]: any[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,7 +102,17 @@ export default function App() {
 
       // Загрузка пользовательских звуков
       const soundsData = await apiClient.getCustomSounds();
-      setCustomSounds(soundsData);
+      // Преобразуем массив в объект с device_id как ключами
+      const soundsObject: { [key: string]: any[] } = {};
+      if (Array.isArray(soundsData)) {
+        soundsData.forEach((sound: any) => {
+          if (!soundsObject[sound.device_id]) {
+            soundsObject[sound.device_id] = [];
+          }
+          soundsObject[sound.device_id].push(sound);
+        });
+      }
+      setCustomSounds(soundsObject);
     } catch (err) {
       setError("Ошибка загрузки данных. Проверьте подключение к API.");
       console.error("Load data error:", err);
@@ -219,7 +229,7 @@ export default function App() {
 
       {currentScreen === "custom-sounds" && (
         <CustomSounds
-          sounds={customSounds}
+          sounds={Object.values(customSounds).flat()}
           onBack={() => setCurrentScreen("devices")}
           onRefresh={loadData}
           selectedDeviceId={selectedDeviceId || undefined}
