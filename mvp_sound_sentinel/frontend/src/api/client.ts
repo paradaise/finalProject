@@ -65,7 +65,9 @@ class ApiClient {
 
   // Устройства
   async getDevices(): Promise<Device[]> {
-    return this.request("/devices");
+    const response = await this.request("/devices");
+    // Handle both array and object response formats
+    return Array.isArray(response) ? response : response.devices || [];
   }
 
   // Детекции звуков
