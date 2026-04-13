@@ -7,7 +7,10 @@ import sys
 import os
 
 # Add client directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'client'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "client"))
+
+# Change to client directory
+os.chdir(os.path.join(os.path.dirname(__file__), "client"))
 
 from audio_client_app import AudioClient
 

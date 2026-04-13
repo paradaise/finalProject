@@ -20,7 +20,7 @@ import logging
 from datetime import datetime
 from contextlib import contextmanager
 
-from .config import (
+from config import (
     API_SERVER_URL,
     DEVICE_NAME,
     SAMPLE_RATE,
@@ -34,10 +34,10 @@ from .config import (
     DETECTION_CONFIDENCE_THRESHOLD,
 )
 
-from . import alsa_suppress as _alsa_suppress
-from . import audio_math as _audio_math
-from . import audio_enhancement as _audio_enhancement
-from . import device_info as _device_info
+import alsa_suppress as _alsa_suppress
+import audio_math as _audio_math
+import audio_enhancement as _audio_enhancement
+import device_info as _device_info
 
 
 # Подавляем ALSA и PortAudio ошибки
