@@ -38,16 +38,8 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
     return 'text-red-600';
   };
 
-  const getWifiSignalBars = (signal: number) => {
-    const bars = Math.max(1, Math.min(4, Math.round(signal / 25)));
-    return Array(4).fill(0).map((_, i) => (
-      <div
-        key={i}
-        className={`w-1 h-3 mx-0.5 rounded-sm ${
-          i < bars ? 'bg-current' : 'bg-gray-300'
-        }`}
-      />
-    ));
+  const getWifiIcon = (signal: number) => {
+    return <Wifi className={`w-4 h-4 ${getWifiSignalColor(signal)}`} />;
   };
 
   const formatLastSeen = (lastSeen: string) => {
@@ -231,9 +223,7 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                           <div>
                             <p className="text-gray-600 text-xs sm:text-sm">WiFi</p>
                             <div className="flex items-center gap-2">
-                              <div className="flex items-center">
-                                {getWifiSignalBars(device.wifi_signal)}
-                              </div>
+                              {getWifiIcon(device.wifi_signal)}
                               <span className={`font-medium text-sm sm:text-base ${getWifiSignalColor(device.wifi_signal)}`}>
                                 {device.wifi_signal}%
                               </span>
@@ -260,6 +250,30 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                                 {device.device_temperature || 0}°C
                               </span>
                             </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 sm:hidden">
+                          <div className="text-center">
+                            <p className="text-gray-600 text-xs">WiFi</p>
+                            <p className={`font-medium text-sm ${getWifiSignalColor(device.wifi_signal)}`}>
+                              {device.wifi_signal}%
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-gray-600 text-xs">CPU</p>
+                            <p className="font-medium text-sm text-blue-600">
+                              {device.cpu_usage || 0}%
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-gray-600 text-xs">Temp</p>
+                            <p className={`font-medium text-sm ${
+                              device.device_temperature > 70 ? 'text-red-600' : 
+                              device.device_temperature > 50 ? 'text-yellow-600' : 
+                              'text-green-600'
+                            }`}>
+                              {device.device_temperature || 0}°C
+                            </p>
                           </div>
                         </div>
 

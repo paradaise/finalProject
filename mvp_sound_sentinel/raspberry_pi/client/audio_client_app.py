@@ -364,6 +364,8 @@ class AudioClient:
                 payload = {
                     "device_id": self.device_id,
                     "wifi_signal": device_info["wifi_signal"],
+                    "cpu_usage": device_info["cpu_usage"],
+                    "device_temperature": device_info["device_temperature"],
                     "microphone_info": device_info["microphone_info"],
                     "last_seen": datetime.now().isoformat(),
                 }
@@ -375,22 +377,26 @@ class AudioClient:
                 )
 
                 if response.status_code == 200:
-                    print(f"📶 WiFi сигнал обновлен: {device_info['wifi_signal']}%")
+                    print(
+                        f"📶 WiFi: {device_info['wifi_signal']}% | 🖥️ CPU: {device_info['cpu_usage']}% | 🌡️ Temp: {device_info['device_temperature']}°C"
+                    )
                 else:
                     print(f"❌ Ошибка обновления WiFi: {response.status_code}")
         except Exception as e:
             print(f"❌ Ошибка обновления информации об устройстве: {e}")
 
     def update_wifi_signal(self):
-        """Отдельное обновление только WiFi сигнала (без микрофона)."""
+        """Отдельное обновление WiFi сигнала, CPU и температуры."""
         try:
             if not self.device_id:
                 return
 
-            wifi_signal = self.get_wifi_signal()
+            device_info = self.get_device_info()
             payload = {
                 "device_id": self.device_id,
-                "wifi_signal": wifi_signal,
+                "wifi_signal": device_info["wifi_signal"],
+                "cpu_usage": device_info["cpu_usage"],
+                "device_temperature": device_info["device_temperature"],
                 "last_seen": datetime.now().isoformat(),
             }
 
@@ -401,7 +407,9 @@ class AudioClient:
             )
 
             if response.status_code == 200:
-                print(f"📶 WiFi сигнал обновлен: {wifi_signal}%")
+                print(
+                    f"📶 WiFi: {device_info['wifi_signal']}% | 🖥️ CPU: {device_info['cpu_usage']}% | 🌡️ Temp: {device_info['device_temperature']}°C"
+                )
         except Exception:
             # Не критично для работы, просто игнорируем ошибку.
             pass
