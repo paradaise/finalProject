@@ -403,7 +403,7 @@ class AudioClient:
             print(f"Client sending payload: {payload}")
 
             response = self.session.put(
-                f"{API_SERVER_URL}/update_device/{self.device_id}",
+                f"{API_SERVER_URL}/update_device_info/{self.device_id}",
                 json=payload,
                 timeout=5,
             )
