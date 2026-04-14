@@ -41,6 +41,11 @@ except Exception:
 
 from backend.api.simple import state as simple_state
 from backend.api.simple.router import router as simple_router
+from backend.utils.yamnet_cached import (
+    load_yamnet_model,
+    get_cache_info,
+    clear_yamnet_cache,
+)
 
 # Глобальные переменные
 db_path = os.getenv("DB_PATH", "soundsentinel.db")
@@ -253,41 +258,21 @@ def init_database():
     print("✅ База данных инициализирована")
 
 
-# Загрузка модели
+# Загрузка модели с кэшированием
 def load_model():
     global model, class_names
     try:
-        print("🔄 Загрузка YAMNet модели...")
+        print("🔄 Загрузка YAMNet модели с кэшированием...")
 
-        # Очищаем кэш
-        import tempfile
+        # Загружаем модель с локальным кэшированием
+        model, class_names = load_yamnet_model()
 
-        cache_dir = os.path.join(tempfile.gettempdir(), "tfhub_modules")
-        if os.path.exists(cache_dir):
-            import shutil
-
-            try:
-                shutil.rmtree(cache_dir)
-                print("🧹 Старый кэш TensorFlow Hub удалён")
-            except:
-                pass
-
-        # Загружаем модель
-        model = hub.load("https://tfhub.dev/google/yamnet/1")
-
-        # Загружаем классы
-        class_names_path = tf.keras.utils.get_file(
-            "yamnet_class_map.csv",
-            "https://raw.githubusercontent.com/tensorflow/models/master/research/audioset/yamnet/yamnet_class_map.csv",
-        )
-        class_names = []
-        with open(class_names_path, "r") as f:
-            next(f)
-            for line in f:
-                class_names.append(line.strip().split(",")[2])
-
-        print(f"✅ YAMNet модель загружена. Классов: {len(class_names)}")
-        return True
+        if model is not None and class_names is not None:
+            print(f"✅ YAMNet модель загружена. Классов: {len(class_names)}")
+            return True
+        else:
+            print("❌ Не удалось загрузить YAMNet модель")
+            return False
     except Exception as e:
         print(f"❌ Ошибка загрузки модели: {e}")
         return False

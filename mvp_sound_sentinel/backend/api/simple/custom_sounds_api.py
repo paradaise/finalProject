@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from backend.api.simple import state
-from backend.utils.yamnet import extract_embeddings as extract_yamnet_embeddings
+from backend.utils.yamnet_cached import extract_embeddings as extract_yamnet_embeddings
 
 
 router = APIRouter()
@@ -23,7 +23,9 @@ class TrainSoundRequest(BaseModel):
     threshold: Optional[float] = None
 
 
-def _resample_audio_linear(audio: List[float], original_rate: int, target_rate: int) -> List[float]:
+def _resample_audio_linear(
+    audio: List[float], original_rate: int, target_rate: int
+) -> List[float]:
     """Lightweight resample without librosa/scipy."""
     if original_rate == target_rate:
         return audio
@@ -60,7 +62,9 @@ async def train_custom_sound(request: TrainSoundRequest):
         sample_rate = request.sample_rate or 16000
         default_threshold = float(os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.75"))
         resolved_threshold = (
-            float(request.threshold) if request.threshold is not None else default_threshold
+            float(request.threshold)
+            if request.threshold is not None
+            else default_threshold
         )
 
         all_embeddings = []
@@ -180,7 +184,11 @@ async def get_custom_sounds():
         sounds = []
         seen = set()
         for row in cursor.fetchall():
-            key = (row[1].strip().lower(), row[2].strip().lower(), (row[6] or "").strip().lower())
+            key = (
+                row[1].strip().lower(),
+                row[2].strip().lower(),
+                (row[6] or "").strip().lower(),
+            )
             if key in seen:
                 continue
             seen.add(key)

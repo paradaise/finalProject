@@ -26,6 +26,7 @@ from backend.api.simple.save_notification_settings import (
 )
 from backend.api.simple.notification_sounds import router as notification_sounds_router
 from backend.api.simple.excluded_sounds import router as excluded_sounds_router
+from backend.api.simple.yamnet_cache import router as yamnet_cache_router
 
 
 router = APIRouter()
@@ -44,3 +45,4 @@ router.include_router(yamnet_sounds_router)
 router.include_router(save_notification_settings_router)
 router.include_router(notification_sounds_router)
 router.include_router(excluded_sounds_router)
+router.include_router(yamnet_cache_router)

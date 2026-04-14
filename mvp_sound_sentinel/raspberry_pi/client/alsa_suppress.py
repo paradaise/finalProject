@@ -18,4 +18,3 @@ def suppress_alsa_errors() -> Iterator[None]:
     finally:
         os.dup2(saved_stderr_fd, original_stderr_fd)
         os.close(saved_stderr_fd)
-

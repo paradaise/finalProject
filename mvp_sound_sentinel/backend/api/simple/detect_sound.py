@@ -11,6 +11,7 @@ from backend.api.simple import state
 from backend.api.simple.ws import broadcast_to_websockets
 from backend.utils.custom_matching import find_best_custom_match
 from backend.utils.notifications import should_send_notification
+from backend.utils.yamnet_cached import extract_embeddings as extract_yamnet_embeddings
 
 
 router = APIRouter()
