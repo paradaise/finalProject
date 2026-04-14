@@ -38,6 +38,7 @@ import alsa_suppress as _alsa_suppress
 import audio_math as _audio_math
 import audio_enhancement as _audio_enhancement
 import device_info as _device_info
+from light_audio_preprocessor import LightAudioPreprocessor
 
 
 # Подавляем ALSA и PortAudio ошибки
@@ -62,6 +63,9 @@ class AudioClient:
         self.stream = None
         self.fallback_sample_rate = None
         self.audio_enhancer = _audio_enhancement.AudioEnhancer(sample_rate=SAMPLE_RATE)
+
+        # Инициализируем лёгкий предпроцессор
+        self.light_preprocessor = LightAudioPreprocessor(target_peak=0.95)
 
         # Настройки для HTTPS с самоподписанным сертификатом
         import urllib3
@@ -272,13 +276,15 @@ class AudioClient:
             if not self.device_id:
                 return
 
-            # Отправляем аудиочанк без предобработки
-            db_level = self.calculate_db(audio_data)
+            # Применяем лёгкую предобработку (DC-removal + peak_normalize)
+            processed_audio = self.light_preprocessor.preprocess(audio_data)
+
+            db_level = self.calculate_db(processed_audio)
             normalized_db = db_level + 100
 
             payload = {
                 "device_id": self.device_id,
-                "audio_data": audio_data.tolist(),
+                "audio_data": processed_audio.tolist(),
                 "sample_rate": SAMPLE_RATE,
                 "db_level": normalized_db,
             }
