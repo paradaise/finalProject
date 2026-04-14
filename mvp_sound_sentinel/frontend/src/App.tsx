@@ -26,6 +26,11 @@ export default function App() {
   useEffect(() => {
     loadData();
 
+    // Добавляем периодическое обновление устройств каждые 5 секунд
+    const refreshInterval = setInterval(() => {
+      loadDevicesOnly(); // Обновляем только устройства, не детекции
+    }, 5000);
+
     // WebSocket для реального времени
     const ws = apiClient.connectWebSocket((data) => {
       console.log("📡 WebSocket received:", data);
@@ -41,6 +46,15 @@ export default function App() {
             last_seen: new Date().toISOString(),
           },
         ]);
+      } else if (data.type === "device_updated") {
+        // Обновляем данные устройства при получении WebSocket события
+        setDevices((prev) =>
+          prev.map((device) =>
+            device.id === data.device_id
+              ? { ...device, ...data.device_info }
+              : device
+          )
+        );
       } else if (data.type === "sound_detected") {
         console.log("🔊 Sound detected in App:", {
           sound_type: data.sound_type,
@@ -75,9 +89,21 @@ export default function App() {
     });
 
     return () => {
+      clearInterval(refreshInterval);
       ws.close();
     };
   }, []);
+
+  const loadDevicesOnly = async () => {
+    try {
+      // Загрузка только устройств
+      const devicesResponse = await apiClient.getDevices() as any;
+      const devicesData = devicesResponse.devices || devicesResponse;
+      setDevices(devicesData);
+    } catch (error) {
+      console.error("Error loading devices:", error);
+    }
+  };
 
   const loadData = async () => {
     try {

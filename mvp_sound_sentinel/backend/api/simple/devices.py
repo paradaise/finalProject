@@ -30,9 +30,10 @@ async def get_devices():
                 "status": row[8],
                 "last_seen": row[9],
                 "created_at": row[10],
+                "cpu_usage": row[11] if len(row) > 11 else None,
+                "device_temperature": row[12] if len(row) > 12 else None,
             }
         )
 
     conn.close()
     return {"devices": devices}
-

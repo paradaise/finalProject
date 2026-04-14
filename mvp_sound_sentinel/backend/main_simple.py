@@ -147,7 +147,7 @@ async def log_requests(request: Request, call_next):
     start_time = time.time()
 
     # Логируем запрос
-    print(f"📥 {request.method} {request.url}")
+    print(f"📥 {request.method} {request.url.path}")
 
     response = await call_next(request)
 
@@ -316,52 +316,6 @@ async def update_audio_level(data: AudioLevel):
     for ws in dead_connections:
         websocket_connections.discard(ws)
     return {"status": "success"}
-
-
-@app.put("/update_device/{device_id}")
-async def update_device(device_id: str, device_update: DeviceUpdate):
-    """Обновление информации об устройстве"""
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        # Обновляем только переданные поля
-        update_fields = []
-        update_values = []
-
-        if device_update.wifi_signal is not None:
-            update_fields.append("wifi_signal = ?")
-            update_values.append(device_update.wifi_signal)
-
-        if device_update.microphone_info is not None:
-            update_fields.append("microphone_info = ?")
-            update_values.append(device_update.microphone_info)
-
-        if device_update.status is not None:
-            update_fields.append("status = ?")
-            update_values.append(device_update.status)
-
-        if device_update.last_seen is not None:
-            update_fields.append("last_seen = ?")
-            update_values.append(device_update.last_seen)
-
-        if update_fields:
-            update_values.append(device_id)
-            cursor.execute(
-                f"""
-                UPDATE devices 
-                SET {', '.join(update_fields)}
-                WHERE id = ?
-            """,
-                update_values,
-            )
-            conn.commit()
-
-        conn.close()
-        return {"status": "updated"}
-    except Exception as e:
-        print(f"❌ Ошибка обновления устройства: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update device")
 
 
 @app.get("/detections/{device_id}")

@@ -227,7 +227,11 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                                 <p className="text-gray-600 text-xs">WiFi</p>
                                 <div className="flex items-center justify-center gap-1">
                                   {getWifiIcon(device.wifi_signal)}
-                                  <span className={`font-medium text-sm ${getWifiSignalColor(device.wifi_signal)}`}>
+                                  <span className={`font-medium text-sm ${
+                                    device.wifi_signal > 70 ? 'text-green-600' : 
+                                    device.wifi_signal > 30 ? 'text-yellow-600' : 
+                                    'text-red-600'
+                                  }`}>
                                     {device.wifi_signal}%
                                   </span>
                                 </div>
@@ -236,7 +240,11 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
                                 <p className="text-gray-600 text-xs">CPU</p>
                                 <div className="flex items-center justify-center gap-1">
                                   <Activity className="w-4 h-4 text-blue-500" />
-                                  <span className="font-medium text-sm text-blue-600">
+                                  <span className={`font-medium text-sm ${
+                                    device.cpu_usage > 80 ? 'text-red-600' : 
+                                    device.cpu_usage > 50 ? 'text-yellow-600' : 
+                                    'text-green-600'
+                                  }`}>
                                     {device.cpu_usage || 0}%
                                   </span>
                                 </div>
