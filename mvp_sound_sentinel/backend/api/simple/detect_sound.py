@@ -94,7 +94,7 @@ async def detect_sound(audio_data: AudioData) -> Dict[str, Any]:
         custom_sound_type = None
         if custom_match:
             similarity = float(custom_match.get("similarity", 0.0) or 0.0)
-            threshold = float(custom_match.get("threshold", 0.85) or 0.85)
+            threshold = float(custom_match.get("threshold", 0.7) or 0.7)
 
             # Additional validation: require minimum similarity for specific sounds
             if custom_match.get("sound_type") == "specific" and similarity >= threshold:

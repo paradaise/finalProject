@@ -935,7 +935,7 @@ Overall Performance: Good
   "detections": [
     {
       "sound_type": "Speech",
-      "confidence": 0.85,
+      "confidence": 0.7,
       "timestamp": "2024-01-01T12:00:00Z"
     }
   ],
@@ -955,7 +955,7 @@ Overall Performance: Good
 {
   "type": "sound_detected",
   "sound_type": "Speech",
-  "confidence": 0.85,
+  "confidence": 0.7,
   "device_id": "uuid",
   "device_name": "Living Room",
   "timestamp": "2024-01-01T12:00:00Z",

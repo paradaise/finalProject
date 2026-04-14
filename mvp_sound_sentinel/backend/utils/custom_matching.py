@@ -93,7 +93,7 @@ def find_best_custom_match(
                 import os
 
                 default_threshold = float(
-                    os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.85")
+                    os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.7")
                 )
 
                 stored_threshold = (

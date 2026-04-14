@@ -238,7 +238,7 @@ def init_database():
     )
 
     # Sync legacy/default custom thresholds with environment default.
-    default_match_threshold = float(os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.85"))
+    default_match_threshold = float(os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.7"))
     cursor.execute(
         """
         UPDATE custom_sounds

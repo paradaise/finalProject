@@ -39,6 +39,10 @@ import audio_math as _audio_math
 import audio_enhancement as _audio_enhancement
 import device_info as _device_info
 
+# Импортируем предобработку аудио
+sys.path.append(os.path.join(os.path.dirname(__file__), "audio_preprocessing"))
+from audio_preprocessing import AudioPreprocessor
+
 
 # Подавляем ALSA и PortAudio ошибки
 os.environ["ALSA_PCM_CARD"] = "0"
@@ -67,6 +71,10 @@ class AudioClient:
             "improvements_sum": 0,
             "last_improvement": 0,
         }
+
+        # Инициализация предобработчика аудио
+        self.audio_preprocessor = AudioPreprocessor(SAMPLE_RATE)
+        print("🎛️ Аудиопредобработчик инициализирован: peak_normalize")
 
         # Настройки для HTTPS с самоподписанным сертификатом
         import urllib3
@@ -277,12 +285,17 @@ class AudioClient:
             if not self.device_id:
                 return
 
-            db_level = self.calculate_db(audio_data)
+            # Применяем peak_normalize предобработку
+            processed_audio = self.audio_preprocessor.normalizer.peak_normalize(
+                audio_data
+            )
+
+            db_level = self.calculate_db(processed_audio)
             normalized_db = db_level + 100
 
             payload = {
                 "device_id": self.device_id,
-                "audio_data": audio_data.tolist(),
+                "audio_data": processed_audio.tolist(),
                 "sample_rate": SAMPLE_RATE,
                 "db_level": normalized_db,
             }
