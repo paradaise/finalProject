@@ -408,13 +408,16 @@ class AudioClient:
                 timeout=5,
             )
 
+            print(f"PUT response status: {response.status_code}")
+            if response.status_code != 200:
+                print(f"PUT response text: {response.text}")
+
             if response.status_code == 200:
                 print(
-                    f"📶 WiFi: {device_info['wifi_signal']}% | 🖥️ CPU: {device_info['cpu_usage']}% | 🌡️ Temp: {device_info['device_temperature']}°C"
+                    f"PUT success: WiFi {device_info['wifi_signal']}% | CPU {device_info['cpu_usage']}% | Temp {device_info['device_temperature']}°C"
                 )
-        except Exception:
-            # Не критично для работы, просто игнорируем ошибку.
-            pass
+        except Exception as e:
+            print(f"PUT request failed: {e}")
 
     def audio_loop(self):
         """Основной цикл записи и отправки аудио"""
