@@ -400,17 +400,11 @@ class AudioClient:
                 "last_seen": datetime.now().isoformat(),
             }
 
-            print(f"Client sending payload: {payload}")
-
             response = self.session.put(
-                f"{API_SERVER_URL}/update_device_info/{self.device_id}",
+                f"{API_SERVER_URL}/update_device/{self.device_id}",
                 json=payload,
                 timeout=5,
             )
-
-            print(f"PUT response status: {response.status_code}")
-            if response.status_code != 200:
-                print(f"PUT response text: {response.text}")
 
             if response.status_code == 200:
                 print(
