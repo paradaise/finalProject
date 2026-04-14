@@ -9,6 +9,7 @@ from backend.api.simple.health import router as health_router
 from backend.api.simple.ws import router as ws_router
 from backend.api.simple.cleanup_devices import router as cleanup_router
 from backend.api.simple.delete_device import router as delete_device_router
+from backend.api.simple.clear_detections import router as clear_detections_router
 from backend.api.simple.notification_settings import (
     router as notification_settings_router,
 )
@@ -31,6 +32,7 @@ router.include_router(health_router)
 router.include_router(ws_router)
 router.include_router(cleanup_router)
 router.include_router(delete_device_router)
+router.include_router(clear_detections_router)
 router.include_router(notification_settings_router)
 router.include_router(custom_sounds_router)
 router.include_router(yamnet_sounds_router)

@@ -116,13 +116,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
     }
   };
 
-  const getWifiSignalColor = (signal: number) => {
-    if (signal > 70) return 'text-green-600';
-    if (signal > 40) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getWifiIcon = (signal: number) => {
+  const getWifiIcon = () => {
     return <Wifi className={`w-4 h-4 sm:w-5 sm:h-5 text-white`} />;
   };
 
@@ -264,7 +258,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 cursor-pointer">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg">
-                {getWifiIcon(device.wifi_signal)}
+                {getWifiIcon()}
               </div>
               <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1">Статус</p>
               <p className="text-lg sm:text-xl font-bold text-green-600">

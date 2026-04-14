@@ -392,6 +392,7 @@ class AudioClient:
                 return
 
             device_info = self.get_device_info()
+            print(f"🔍 Debug device_info: {device_info}")
             payload = {
                 "device_id": self.device_id,
                 "wifi_signal": device_info["wifi_signal"],
@@ -399,6 +400,7 @@ class AudioClient:
                 "device_temperature": device_info["device_temperature"],
                 "last_seen": datetime.now().isoformat(),
             }
+            print(f"🔍 Debug payload: {payload}")
 
             response = self.session.put(
                 f"{API_SERVER_URL}/update_device/{self.device_id}",
