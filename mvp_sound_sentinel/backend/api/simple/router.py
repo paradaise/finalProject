@@ -12,7 +12,6 @@ from backend.api.simple.yamnet_sounds import router as yamnet_sounds_router
 from backend.api.simple.save_notification_settings import (
     router as save_notification_settings_router,
 )
-from backend.api.simple.device_auth_api import router as device_auth_router
 from backend.api.simple.clear_detections import router as clear_detections_router
 from backend.api.simple.notification_settings import (
     router as notification_settings_router,
@@ -34,7 +33,6 @@ router.include_router(register_device_router)
 router.include_router(detect_sound_router)
 router.include_router(update_device_info_router)
 router.include_router(devices_router)
-router.include_router(device_auth_router)
 router.include_router(health_router)
 router.include_router(ws_router)
 router.include_router(cleanup_router)

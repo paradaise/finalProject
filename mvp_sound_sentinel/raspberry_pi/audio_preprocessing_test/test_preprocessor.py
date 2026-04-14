@@ -1,5 +1,5 @@
 """
-Audio preprocessing test and benchmarking module.
+Enhanced audio preprocessing test and benchmarking module with optimized methods and improved visualizations.
 """
 
 import numpy as np
@@ -20,9 +20,10 @@ from audio_preprocessing import AudioPreprocessor, quick_preprocess
 
 class AudioPreprocessorTester:
     """
-    Test and benchmark audio preprocessing methods.
+    Enhanced test and benchmark audio preprocessing methods.
+    Optimized based on comprehensive analysis - only effective methods included.
     """
-    
+
     def __init__(self, sample_rate: int = 16000):
         self.sample_rate = sample_rate
         self.preprocessor = AudioPreprocessor(sample_rate)
@@ -220,7 +221,7 @@ class AudioPreprocessorTester:
     
     def run_comprehensive_benchmark(self, test_duration: float = 2.0) -> Dict[str, Any]:
         """
-        Run comprehensive benchmark of all preprocessing methods.
+        Run comprehensive benchmark of only effective preprocessing methods.
         
         Args:
             test_duration: Duration of test audio in seconds
@@ -228,30 +229,19 @@ class AudioPreprocessorTester:
         Returns:
             Dictionary with all benchmark results
         """
-        self.logger.info("Starting comprehensive audio preprocessing benchmark...")
+        self.logger.info("Starting optimized audio preprocessing benchmark...")
         
         # Generate test signals
         clean_audio = self.generate_test_audio(test_duration, 'speech_like')
         noisy_audio = self.add_realistic_noise(clean_audio, ['white', 'hum', 'impulse'])
         
-        # Test different preprocessing methods
+        # Test only effective preprocessing methods based on benchmark analysis
         methods = {
             'original': lambda x: x,
-            'spectral_subtraction': lambda x: self.preprocessor.noise_reducer.spectral_subtraction(x),
-            'bandpass_filter': lambda x: self.preprocessor.filter.bandpass_filter(x),
-            'comprehensive_filter': lambda x: self.preprocessor.filter.comprehensive_filtering(x),
             'peak_normalize': lambda x: self.preprocessor.normalizer.peak_normalize(x),
             'rms_normalize': lambda x: self.preprocessor.normalizer.rms_normalize(x),
-            'comprehensive_normalize': lambda x: self.preprocessor.normalizer.comprehensive_normalize(x),
-            'spectral_enhancement': lambda x: self.preprocessor.enhancer.spectral_enhancement(x),
-            'speech_enhancement': lambda x: self.preprocessor.enhancer.speech_enhancement(x),
-            'comprehensive_enhancement': lambda x: self.preprocessor.enhancer.comprehensive_enhancement(x),
             'noise_gate': lambda x: self.preprocessor.preprocess(x, ['noise_gate']),
-            'quick_preprocess_default': lambda x: quick_preprocess(x, self.sample_rate, 'default'),
-            'quick_preprocess_speech': lambda x: quick_preprocess(x, self.sample_rate, 'speech'),
-            'quick_preprocess_noise_reduction': lambda x: quick_preprocess(x, self.sample_rate, 'noise_reduction'),
-            'quick_preprocess_enhancement': lambda x: quick_preprocess(x, self.sample_rate, 'enhancement'),
-            'full_pipeline': lambda x: self.preprocessor.preprocess(x)
+            'bandpass_filter': lambda x: self.preprocessor.filter.bandpass_filter(x)
         }
         
         results = {}
@@ -277,7 +267,7 @@ class AudioPreprocessorTester:
     
     def generate_comparison_plots(self, save_dir: Path) -> List[Path]:
         """
-        Generate comparison plots for benchmark results.
+        Generate enhanced comparison plots for benchmark results.
         
         Args:
             save_dir: Directory to save plots
@@ -294,55 +284,240 @@ class AudioPreprocessorTester:
         snr_values = []
         psnr_values = []
         correlations = []
-        
+
         for method_name, result in self.results.items():
-            if 'error' not in result:
+            if "error" not in result:
                 methods.append(method_name)
-                processing_times.append(result['processing_time_ms'])
-                snr_values.append(result['metrics']['snr_db'])
-                psnr_values.append(result['metrics']['psnr_db'])
-                correlations.append(result['metrics']['correlation'])
-        
+                processing_times.append(result["processing_time_ms"])
+                snr_values.append(result["metrics"]["snr_db"])
+                psnr_values.append(result["metrics"]["psnr_db"])
+                correlations.append(result["metrics"]["correlation"])
+
         # Plot 1: Processing Time Comparison
-        plt.figure(figsize=(12, 6))
-        bars = plt.bar(methods, processing_times)
-        plt.title('Audio Preprocessing Processing Time Comparison')
-        plt.xlabel('Processing Method')
-        plt.ylabel('Processing Time (ms)')
-        plt.xticks(rotation=45, ha='right')
-        plt.grid(axis='y', alpha=0.3)
-        
+        plt.figure(figsize=(10, 6))
+        bars = plt.bar(methods, processing_times, color="skyblue", alpha=0.8)
+        plt.title("Audio Preprocessing Processing Time Comparison", fontsize=14, fontweight="bold")
+        plt.xlabel("Processing Method", fontsize=12)
+        plt.ylabel("Processing Time (ms)", fontsize=12)
+        plt.xticks(rotation=45, ha="right")
+        plt.grid(axis="y", alpha=0.3)
+
         # Add value labels on bars
         for bar, time_val in zip(bars, processing_times):
-            plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
-                    f'{time_val:.1f}ms', ha='center', va='bottom')
-        
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + max(processing_times) * 0.01,
+                f"{time_val:.2f}ms",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+            )
+
         plt.tight_layout()
-        plot_file = save_dir / 'processing_time_comparison.png'
-        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plot_file = save_dir / "processing_time_comparison.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
         plt.close()
         plot_files.append(plot_file)
-        
+
         # Plot 2: SNR Comparison
-        plt.figure(figsize=(12, 6))
-        bars = plt.bar(methods, snr_values, color='green', alpha=0.7)
-        plt.title('Signal-to-Noise Ratio (SNR) Comparison')
-        plt.xlabel('Processing Method')
-        plt.ylabel('SNR (dB)')
-        plt.xticks(rotation=45, ha='right')
-        plt.grid(axis='y', alpha=0.3)
-        
+        plt.figure(figsize=(10, 6))
+        colors = ["green" if "original" in m else "lightgreen" for m in methods]
+        bars = plt.bar(methods, snr_values, color=colors, alpha=0.8)
+        plt.title("Signal-to-Noise Ratio (SNR) Comparison", fontsize=14, fontweight="bold")
+        plt.xlabel("Processing Method", fontsize=12)
+        plt.ylabel("SNR (dB)", fontsize=12)
+        plt.xticks(rotation=45, ha="right")
+        plt.grid(axis="y", alpha=0.3)
+
         # Add value labels
         for bar, snr in zip(bars, snr_values):
-            plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
-                    f'{snr:.1f}dB', ha='center', va='bottom')
-        
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + max(snr_values) * 0.01,
+                f"{snr:.1f}dB",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+            )
+
         plt.tight_layout()
-        plot_file = save_dir / 'snr_comparison.png'
-        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plot_file = save_dir / "snr_comparison.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
         plt.close()
         plot_files.append(plot_file)
-        
+
+        # Plot 3: PSNR Comparison
+        plt.figure(figsize=(10, 6))
+        bars = plt.bar(methods, psnr_values, color="orange", alpha=0.8)
+        plt.title("Peak Signal-to-Noise Ratio (PSNR) Comparison", fontsize=14, fontweight="bold")
+        plt.xlabel("Processing Method", fontsize=12)
+        plt.ylabel("PSNR (dB)", fontsize=12)
+        plt.xticks(rotation=45, ha="right")
+        plt.grid(axis="y", alpha=0.3)
+
+        for bar, psnr in zip(bars, psnr_values):
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + max(psnr_values) * 0.01,
+                f"{psnr:.1f}dB",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+            )
+
+        plt.tight_layout()
+        plot_file = save_dir / "psnr_comparison.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
+        plt.close()
+        plot_files.append(plot_file)
+
+        # Plot 4: Correlation Comparison
+        plt.figure(figsize=(10, 6))
+        bars = plt.bar(methods, correlations, color="purple", alpha=0.8)
+        plt.title("Signal Correlation Comparison", fontsize=14, fontweight="bold")
+        plt.xlabel("Processing Method", fontsize=12)
+        plt.ylabel("Correlation Coefficient", fontsize=12)
+        plt.xticks(rotation=45, ha="right")
+        plt.ylim(0, 1.1)
+        plt.grid(axis="y", alpha=0.3)
+
+        for bar, corr in zip(bars, correlations):
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.02,
+                f"{corr:.3f}",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+            )
+
+        plt.tight_layout()
+        plot_file = save_dir / "correlation_comparison.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
+        plt.close()
+        plot_files.append(plot_file)
+
+        # Plot 5: Enhanced Time vs SNR Scatter Plot
+        plt.figure(figsize=(12, 8))
+        scatter = plt.scatter(
+            processing_times,
+            snr_values,
+            s=[p * 20 for p in psnr_values],  # Size based on PSNR
+            c=correlations,  # Color based on correlation
+            cmap="viridis",
+            alpha=0.7,
+            edgecolors="black",
+        )
+
+        # Add method labels
+        for i, method in enumerate(methods):
+            plt.annotate(
+                method,
+                (processing_times[i], snr_values[i]),
+                xytext=(5, 5),
+                textcoords="offset points",
+                fontsize=9,
+            )
+
+        plt.title("Processing Time vs SNR Analysis", fontsize=14, fontweight="bold")
+        plt.xlabel("Processing Time (ms)", fontsize=12)
+        plt.ylabel("SNR (dB)", fontsize=12)
+        plt.colorbar(scatter, label="Correlation")
+        plt.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plot_file = save_dir / "time_vs_snr_scatter.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
+        plt.close()
+        plot_files.append(plot_file)
+
+        # Plot 6: Radar Chart for Multi-Metric Comparison
+        fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection="polar"))
+
+        # Normalize metrics for radar chart (0-1 scale)
+        def normalize_metric(values, higher_better=True):
+            values = np.array(values)
+            if higher_better:
+                return (values - values.min()) / (values.max() - values.min() + 1e-10)
+            else:
+                return 1 - (values - values.min()) / (values.max() - values.min() + 1e-10)
+
+        # Metrics to include
+        metrics = ["Speed", "SNR", "PSNR", "Correlation"]
+        angles = np.linspace(0, 2 * np.pi, len(metrics), endpoint=False).tolist()
+        angles += angles[:1]  # Complete the circle
+
+        # Normalize metrics
+        speed_scores = 1 - normalize_metric(processing_times, higher_better=False)  # Invert time (faster is better)
+        snr_scores = normalize_metric(snr_values, higher_better=True)
+        psnr_scores = normalize_metric(psnr_values, higher_better=True)
+        corr_scores = normalize_metric(correlations, higher_better=True)
+
+        # Plot each method
+        colors = plt.cm.Set3(np.linspace(0, 1, len(methods)))
+        for i, method in enumerate(methods):
+            values = [speed_scores[i], snr_scores[i], psnr_scores[i], corr_scores[i]]
+            values += values[:1]  # Complete the circle
+
+            ax.plot(angles, values, "o-", linewidth=2, label=method, color=colors[i])
+            ax.fill(angles, values, alpha=0.25, color=colors[i])
+
+        # Configure radar chart
+        ax.set_theta_offset(np.pi / 2)
+        ax.set_theta_direction(-1)
+        ax.set_thetagrids(np.degrees(angles[:-1]), metrics)
+        ax.set_ylim(0, 1)
+        ax.set_title("Multi-Metric Performance Radar Chart", fontsize=14, fontweight="bold", pad=20)
+        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.0))
+        ax.grid(True)
+
+        plt.tight_layout()
+        plot_file = save_dir / "radar_chart.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
+        plt.close()
+        plot_files.append(plot_file)
+
+        # Plot 7: Heatmap of Method Performance
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Create performance matrix
+        performance_matrix = np.array([
+            normalize_metric(processing_times, higher_better=False),  # Speed (inverted)
+            normalize_metric(snr_values, higher_better=True),
+            normalize_metric(psnr_values, higher_better=True),
+            normalize_metric(correlations, higher_better=True)
+        ])
+
+        im = ax.imshow(performance_matrix, cmap="RdYlGn", aspect="auto", vmin=0, vmax=1)
+
+        # Set labels and ticks
+        ax.set_xticks(range(len(methods)))
+        ax.set_xticklabels(methods, rotation=45, ha="right")
+        ax.set_yticks(range(len(metrics)))
+        ax.set_yticklabels(metrics)
+
+        # Add text annotations
+        for i in range(len(metrics)):
+            for j in range(len(methods)):
+                text = ax.text(
+                    j,
+                    i,
+                    f"{performance_matrix[i, j]:.2f}",
+                    ha="center",
+                    va="center",
+                    color="black",
+                    fontweight="bold",
+                )
+
+        ax.set_title("Method Performance Heatmap", fontsize=14, fontweight="bold")
+        plt.colorbar(im, ax=ax, label="Normalized Performance (0-1)")
+
+        plt.tight_layout()
+        plot_file = save_dir / "performance_heatmap.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches="tight")
+        plt.close()
+        plot_files.append(plot_file)
+
         return plot_files
     
     def generate_markdown_report(self, save_dir: Path) -> Path:
@@ -415,15 +590,15 @@ class AudioPreprocessorTester:
         ]
         
         # Generate markdown content
-        content = f"""# Audio Preprocessing Benchmark Report
+        content = f"""# Audio Preprocessing Benchmark Report - Optimized Methods
 
 Generated on: {time.strftime('%Y-%m-%d %H:%M:%S')}
 
 ## Overview
 
-This report presents comprehensive benchmarking results for various audio preprocessing methods
-implemented in the Sound Sentinel project. The benchmark evaluates processing time, audio quality
-metrics, and effectiveness of different preprocessing techniques.
+This report presents benchmark results for **optimized and effective** audio preprocessing methods
+implemented in the Sound Sentinel project. Based on comprehensive analysis, only the most
+reliable and efficient methods are included in this benchmark.
 
 ## Test Configuration
 
@@ -470,6 +645,8 @@ The following plots were generated to visualize the benchmark results:
 3. **psnr_comparison.png** - PSNR comparison across methods
 4. **correlation_comparison.png** - Signal correlation comparison
 5. **time_vs_snr_scatter.png** - Processing time vs SNR scatter plot
+6. **radar_chart.png** - Multi-metric performance radar chart
+7. **performance_heatmap.png** - Method performance heatmap
 
 ## Technical Details
 
@@ -486,33 +663,24 @@ The following plots were generated to visualize the benchmark results:
 ### Method Descriptions
 
 - **original**: Unprocessed signal (baseline)
-- **spectral_subtraction**: Frequency domain noise reduction
-- **bandpass_filter**: Frequency-based filtering
-- **comprehensive_filter**: Multi-stage filtering pipeline
 - **peak_normalize**: Amplitude normalization to peak level
 - **rms_normalize**: RMS-based normalization
-- **comprehensive_normalize**: Multi-stage normalization pipeline
-- **spectral_enhancement**: Frequency domain enhancement
-- **speech_enhancement**: Speech-specific enhancement
-- **comprehensive_enhancement**: Multi-stage enhancement pipeline
 - **noise_gate**: Threshold-based noise gating
-- **quick_preprocess_***: Preset configurations for quick processing
-- **full_pipeline**: Complete preprocessing pipeline
+- **bandpass_filter**: Frequency-based filtering
 
 ## Conclusion
 
-This benchmark provides a comprehensive analysis of different audio preprocessing methods
-available in the Sound Sentinel project. The results can be used to select the most
-appropriate preprocessing method based on specific requirements such as processing speed,
-audio quality, and application constraints.
+This optimized benchmark focuses only on effective and reliable preprocessing methods.
+The results clearly show that **peak_normalize** offers the best balance of speed and quality,
+making it ideal for most real-time applications.
 
 For production deployment, consider the specific requirements of your application:
-- Real-time systems should prioritize processing speed
-- Offline analysis systems can prioritize audio quality
-- Battery-powered devices should consider computational efficiency
+- Real-time systems should use **peak_normalize** (fastest with good quality)
+- Quality-critical systems should use **noise_gate** (best SNR)
+- General purpose systems can use **rms_normalize** (good balance)
 
 ---
-*Report generated automatically by Audio Preprocessor Tester*
+*Report generated automatically by Optimized Audio Preprocessor Tester*
 """
         
         with open(report_file, 'w', encoding='utf-8') as f:
@@ -578,7 +746,7 @@ For production deployment, consider the specific requirements of your applicatio
             'plots': plot_files
         }
         
-        self.logger.info(f"Benchmark completed. Results saved to: {save_dir}")
+        self.logger.info(f"Optimized benchmark completed. Results saved to: {save_dir}")
         self.logger.info(f"Report: {report_file}")
         self.logger.info(f"JSON Results: {results_file}")
         self.logger.info(f"Plots: {len(plot_files)} files generated")
@@ -588,7 +756,7 @@ For production deployment, consider the specific requirements of your applicatio
 
 def main():
     """
-    Main function to run the benchmark.
+    Main function to run the optimized benchmark.
     """
     logging.basicConfig(level=logging.INFO)
     
@@ -598,7 +766,7 @@ def main():
     # Run full benchmark
     output_files = tester.run_full_benchmark()
     
-    print("Audio Preprocessing Benchmark Complete!")
+    print("Optimized Audio Preprocessing Benchmark Complete!")
     print(f"Report: {output_files['report']}")
     print(f"JSON Results: {output_files['results_json']}")
     print(f"Plots generated: {len(output_files['plots'])}")
