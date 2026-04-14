@@ -45,7 +45,7 @@ DEVICE_INFO_UPDATE_INTERVAL = float(
 
 # How often to refresh WiFi signal (can be same as device info interval).
 WIFI_SIGNAL_UPDATE_INTERVAL = float(
-    os.getenv("WIFI_SIGNAL_UPDATE_INTERVAL", str(DEVICE_INFO_UPDATE_INTERVAL))
+    os.getenv("WIFI_SIGNAL_UPDATE_INTERVAL", "10")  # Changed to 10 seconds for testing
 )
 
 # Confidence threshold for printing/logging detections.
@@ -61,4 +61,3 @@ CHUNK_DURATION = LEVEL_UPDATE_INTERVAL
 CHUNK_SIZE = int(SAMPLE_RATE * CHUNK_DURATION)
 
 DB_REFERENCE = float(os.getenv("DB_REFERENCE", "1.0"))
-
