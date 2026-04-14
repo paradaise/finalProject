@@ -400,6 +400,8 @@ class AudioClient:
                 "last_seen": datetime.now().isoformat(),
             }
 
+            print(f"Client sending payload: {payload}")
+
             response = self.session.put(
                 f"{API_SERVER_URL}/update_device/{self.device_id}",
                 json=payload,
