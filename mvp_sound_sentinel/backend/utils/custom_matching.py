@@ -93,25 +93,26 @@ def find_best_custom_match(
                 import os
 
                 default_threshold = float(
-                    os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.75")
+                    os.getenv("CUSTOM_MATCH_DEFAULT_THRESHOLD", "0.85")
                 )
 
-                stored_threshold = float(threshold) if threshold is not None else default_threshold
-                effective_threshold = min(stored_threshold, default_threshold)
+                stored_threshold = (
+                    float(threshold) if threshold is not None else default_threshold
+                )
+                effective_threshold = max(stored_threshold, default_threshold)
 
                 best_match = {
                     "id": sound_id,
                     "name": name,
-                    "sound_type": sound_type,  # 'specific' или 'excluded'
+                    "sound_type": sound_type,
                     "similarity": similarity,
                     "threshold": effective_threshold,
                 }
                 print(
-                    f"🎯 Новый лучший матч: {name} (схожесть: {similarity:.3f})"
+                    f" Новый лучший матч: {name} (схожесть: {similarity:.3f}) (threshold: {effective_threshold:.3f})"
                 )
 
         return best_match or {}
     except Exception as e:
-        print(f"❌ Ошибка поиска custom match: {e}")
+        print(f" Ошибка поиска custom match: {e}")
         return {}
-

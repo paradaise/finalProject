@@ -16,7 +16,9 @@ from backend.utils.notifications import should_send_notification
 router = APIRouter()
 
 
-def _resample_audio_linear(audio: np.ndarray, original_rate: int, target_rate: int) -> np.ndarray:
+def _resample_audio_linear(
+    audio: np.ndarray, original_rate: int, target_rate: int
+) -> np.ndarray:
     """Lightweight resample without librosa/scipy."""
     if original_rate == target_rate:
         return audio
@@ -92,12 +94,28 @@ async def detect_sound(audio_data: AudioData) -> Dict[str, Any]:
         custom_sound_type = None
         if custom_match:
             similarity = float(custom_match.get("similarity", 0.0) or 0.0)
-            threshold = float(custom_match.get("threshold", 0.75) or 0.75)
-            if similarity >= threshold:
+            threshold = float(custom_match.get("threshold", 0.85) or 0.85)
+
+            # Additional validation: require minimum similarity for specific sounds
+            if custom_match.get("sound_type") == "specific" and similarity >= threshold:
                 is_custom = True
                 custom_sound_type = custom_match.get("sound_type")
                 sound_type = custom_match.get("name", sound_type)
                 confidence = similarity
+                print(f"   {sound_type}: {similarity:.3f} (threshold: {threshold:.3f})")
+            elif (
+                custom_match.get("sound_type") == "excluded" and similarity >= threshold
+            ):
+                # For excluded sounds, we can be slightly more lenient
+                is_custom = True
+                custom_sound_type = custom_match.get("sound_type")
+                sound_type = custom_match.get("name", sound_type)
+                confidence = similarity
+                print(f"   {sound_type}: {similarity:.3f} (threshold: {threshold:.3f})")
+            else:
+                print(
+                    f"   {custom_match.get('name', 'unknown')}: {similarity:.3f} (below threshold: {threshold:.3f})"
+                )
 
         # Сохраняем детекцию
         detection_id = str(uuid.uuid4())
@@ -128,7 +146,9 @@ async def detect_sound(audio_data: AudioData) -> Dict[str, Any]:
         should_notify = (
             (custom_sound_type == "specific")
             if is_custom
-            else should_send_notification(state.db_path, audio_data.device_id, sound_type)
+            else should_send_notification(
+                state.db_path, audio_data.device_id, sound_type
+            )
         )
 
         await broadcast_to_websockets(

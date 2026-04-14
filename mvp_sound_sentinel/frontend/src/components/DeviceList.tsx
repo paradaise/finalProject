@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Wifi, WifiOff, Settings, Volume2, Plus, Trash2, Bell, Activity, Signal } from 'lucide-react';
+import { Wifi, WifiOff, Settings, Volume2, Trash2, Bell, Activity, Signal } from 'lucide-react';
 import { Device } from '../api/client';
 import { apiClient } from '../api/client';
-import { AddDeviceModal } from './AddDeviceModal';
 
 interface Props {
   devices: Device[];
@@ -13,13 +12,8 @@ interface Props {
 }
 
 export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds, onNotificationSettings }: Props) {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [hoveredDevice, setHoveredDevice] = useState<string | null>(null);
 
-  const handleAddDevice = () => {
-    // Обновление списка устройств после добавления
-    window.location.reload();
-  };
   const getStatusIcon = (status: string) => {
     return status === 'online' ? (
       <Wifi className="w-5 h-5 text-green-500" />
@@ -79,12 +73,6 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="p-2 sm:p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 group"
-              >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:rotate-90" />
-              </button>
               <button
                 onClick={onCustomSounds}
                 className="p-2 sm:p-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 group"
@@ -319,12 +307,6 @@ export function DeviceList({ devices, detections, onSelectDevice, onCustomSounds
         </div>
       </div>
 
-      {/* Add Device Modal */}
-      <AddDeviceModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddDevice={handleAddDevice}
-      />
-    </div>
+      </div>
   );
 }
