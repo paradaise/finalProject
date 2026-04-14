@@ -386,13 +386,12 @@ class AudioClient:
             print(f"❌ Ошибка обновления информации об устройстве: {e}")
 
     def update_wifi_signal(self):
-        """Отдельное обновление WiFi сигнала, CPU и температуры."""
+        """Separate update of WiFi signal, CPU and temperature."""
         try:
             if not self.device_id:
                 return
 
             device_info = self.get_device_info()
-            print(f"🔍 Debug device_info: {device_info}")
             payload = {
                 "device_id": self.device_id,
                 "wifi_signal": device_info["wifi_signal"],
@@ -400,7 +399,6 @@ class AudioClient:
                 "device_temperature": device_info["device_temperature"],
                 "last_seen": datetime.now().isoformat(),
             }
-            print(f"🔍 Debug payload: {payload}")
 
             response = self.session.put(
                 f"{API_SERVER_URL}/update_device/{self.device_id}",
@@ -476,9 +474,8 @@ class AudioClient:
                 if now - last_device_info_update >= DEVICE_INFO_UPDATE_INTERVAL:
                     self.update_device_info()
                     last_device_info_update = now
-                    last_wifi_update = now
-                # Otherwise, update WiFi only on WIFI_SIGNAL_UPDATE_INTERVAL
-                elif now - last_wifi_update >= WIFI_SIGNAL_UPDATE_INTERVAL:
+                # Update WiFi only on WIFI_SIGNAL_UPDATE_INTERVAL (independent of device info)
+                if now - last_wifi_update >= WIFI_SIGNAL_UPDATE_INTERVAL:
                     self.update_wifi_signal()
                     last_wifi_update = now
 
