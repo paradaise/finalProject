@@ -75,3 +75,9 @@ reset_*.py
 
 # YAMNet кэш
 backend/cache/yamnet/
+
+
+#папка с тестами
+
+test_audio
+documents
