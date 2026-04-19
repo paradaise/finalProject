@@ -379,11 +379,10 @@ class AudioClient:
                 )
 
                 if response.status_code == 200:
-                    print(
-                        f"📶 WiFi: {device_info['wifi_signal']}% | 🖥️ CPU: {device_info['cpu_usage']}% | 🌡️ Temp: {device_info['device_temperature']}°C"
-                    )
+                    # Successfully updated device info
+                    pass
                 else:
-                    print(f"❌ Ошибка обновления WiFi: {response.status_code}")
+                    print(f"Error updating WiFi: {response.status_code}")
         except Exception as e:
             print(f"❌ Ошибка обновления информации об устройстве: {e}")
 
@@ -409,9 +408,8 @@ class AudioClient:
             )
 
             if response.status_code == 200:
-                print(
-                    f"PUT success: WiFi {device_info['wifi_signal']}% | CPU {device_info['cpu_usage']}% | Temp {device_info['device_temperature']}°C"
-                )
+                # Successfully updated WiFi signal
+                pass
         except Exception as e:
             print(f"PUT request failed: {e}")
 

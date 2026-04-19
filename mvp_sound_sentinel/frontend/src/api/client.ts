@@ -154,10 +154,14 @@ class ApiClient {
 
   // WebSocket для реального времени
   connectWebSocket(onMessage: (data: any) => void): WebSocket {
-    const ws = new WebSocket(`${this.baseUrl.replace("http", "ws")}/ws`);
+    // Используем ws:// для локальной разработки и wss:// для production
+    const wsUrl = this.baseUrl.includes("localhost") 
+      ? `${this.baseUrl.replace("http", "ws")}/ws`
+      : `${this.baseUrl.replace("https", "wss")}/ws`;
+    
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log("WebSocket connected");
       // Начинаем heartbeat
       setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
@@ -183,11 +187,7 @@ class ApiClient {
     };
 
     ws.onclose = () => {
-      console.log("WebSocket disconnected");
-      // Автоматическое переподключение через 5 секунд
-      setTimeout(() => {
-        this.connectWebSocket(onMessage);
-      }, 5000);
+      console.log("WebSocket connection closed");
     };
 
     ws.onerror = (error) => {

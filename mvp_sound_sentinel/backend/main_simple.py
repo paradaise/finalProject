@@ -151,14 +151,28 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     start_time = time.time()
 
-    # Логируем запрос
-    print(f"📥 {request.method} {request.url.path}")
+    # Skip logging for audio_level endpoint to reduce noise
+    if request.url.path == "/update_audio_level":
+        # Completely skip logging for this endpoint
+        response = await call_next(request)
+        return response
 
     response = await call_next(request)
-
-    # Логируем ответ
     process_time = time.time() - start_time
-    print(f"📤 {response.status_code} - {process_time:.3f}s")
+
+    # Get client IP
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Skip logging for localhost and frequent frontend polling
+    if client_ip in ["127.0.0.1", "::1"] or (
+        client_ip == "192.168.0.61" and request.url.path == "/devices"
+    ):
+        return response
+
+    # Compact log format: STATUS TIME IP PATH
+    print(
+        f"{response.status_code} {process_time:.3f}s {client_ip} {request.method} {request.url.path}"
+    )
 
     return response
 
@@ -255,26 +269,26 @@ def init_database():
 
     conn.commit()
     conn.close()
-    print("✅ База данных инициализирована")
+    print("Database initialized")
 
 
 # Загрузка модели с кэшированием
 def load_model():
     global model, class_names
     try:
-        print("🔄 Загрузка YAMNet модели с кэшированием...")
+        print("Loading YAMNet model with caching...")
 
-        # Загружаем модель с локальным кэшированием
+        # Load model with local caching
         model, class_names = load_yamnet_model()
 
         if model is not None and class_names is not None:
-            print(f"✅ YAMNet модель загружена. Классов: {len(class_names)}")
+            print(f"YAMNet model loaded. Classes: {len(class_names)}")
             return True
         else:
-            print("❌ Не удалось загрузить YAMNet модель")
+            print("Failed to load YAMNet model")
             return False
     except Exception as e:
-        print(f"❌ Ошибка загрузки модели: {e}")
+        print(f"Model loading error: {e}")
         return False
 
 
@@ -347,9 +361,9 @@ async def get_detections(device_id: str, limit: int = 1000):
 app.include_router(simple_router)
 
 if __name__ == "__main__":
-    print("🚀 Запуск Sound Sentinel API сервера...")
-    print(f"📡 Сервер будет доступен на https://{HOST}:{PORT}")
-    print(f"🔗 WebSocket: wss://{HOST}:{PORT}/ws")
+    print("Launching Sound Sentinel API server...")
+    print(f"Server will be available on https://{HOST}:{PORT}")
+    print(f"WebSocket: wss://{HOST}:{PORT}/ws")
 
     # Пути к сертификатам
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -369,6 +383,12 @@ if __name__ == "__main__":
         print(f"cert_path: {cert_path}")
         print(f"key_path: {key_path}")
     else:
+        import logging
+
+        # Completely disable Uvicorn access logging
+        logging.getLogger("uvicorn.access").handlers = []
+        logging.getLogger("uvicorn.access").propagate = False
+
         uvicorn.run(
             "main_simple:app",
             host=HOST,
@@ -377,4 +397,5 @@ if __name__ == "__main__":
             log_level="info",
             ssl_keyfile=key_path,
             ssl_certfile=cert_path,
+            access_log=False,  # Disable access logging completely
         )

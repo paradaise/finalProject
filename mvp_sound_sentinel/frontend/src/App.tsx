@@ -21,6 +21,7 @@ export default function App() {
   const [customSounds, setCustomSounds] = useState<{ [key: string]: any[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastProcessedEvent, setLastProcessedEvent] = useState<string | null>(null);
 
   // Загрузка данных
   useEffect(() => {
@@ -33,9 +34,12 @@ export default function App() {
 
     // WebSocket для реального времени
     const ws = apiClient.connectWebSocket((data) => {
-      console.log("📡 WebSocket received:", data);
+      // Skip logging for audio_level_updated, device_updated, and keepalive to reduce console noise
+      if (data && data.type !== "audio_level_updated" && data.type !== "device_updated" && data.type !== "keepalive") {
+        console.log("WebSocket received:", data);
+      }
 
-      if (data.type === "device_registered") {
+      if (data && data.type === "device_registered") {
         setDevices((prev) => [
           ...prev,
           {
@@ -46,7 +50,7 @@ export default function App() {
             last_seen: new Date().toISOString(),
           },
         ]);
-      } else if (data.type === "device_updated") {
+      } else if (data && data.type === "device_updated") {
         // Обновляем данные устройства при получении WebSocket события
         setDevices((prev) =>
           prev.map((device) =>
@@ -55,13 +59,18 @@ export default function App() {
               : device
           )
         );
-      } else if (data.type === "sound_detected") {
-        console.log("🔊 Sound detected in App:", {
-          sound_type: data.sound_type,
-          confidence: data.confidence,
-          should_notify: data.should_notify,
-        });
-
+      } else if (data && data.type === "sound_detected") {
+        // Проверяем на дубликаты событий (с учетом времени)
+        const eventKey = `${data.device_id}-${data.sound_type}-${data.timestamp}`;
+        const now = Date.now();
+        const lastTime = lastProcessedEvent ? parseInt(lastProcessedEvent.split('-').pop() || '0') : 0;
+        
+        // Пропускаем если это тот же ключ или если прошло меньше 1 секунды
+        if (lastProcessedEvent === eventKey || (now - lastTime < 1000)) {
+          return; // Пропускаем дубликат
+        }
+        setLastProcessedEvent(eventKey);
+        
         setDetections((prev) => ({
           ...prev,
           [data.device_id]: [
@@ -76,11 +85,10 @@ export default function App() {
         }));
 
         // Отправляем событие для уведомлений
-        console.log("📤 Dispatching soundDetected event with:", data);
         window.dispatchEvent(
           new CustomEvent("soundDetected", { detail: data }),
         );
-      } else if (data.type === "audio_level_updated") {
+      } else if (data && data.type === "audio_level_updated") {
         // Пробрасываем событие уровня звука для компонентов, которым это нужно (например, графику в DeviceDetail)
         window.dispatchEvent(
           new CustomEvent("audioLevelUpdated", { detail: data }),
@@ -90,7 +98,9 @@ export default function App() {
 
     return () => {
       clearInterval(refreshInterval);
-      ws.close();
+      if (ws) {
+        ws.close();
+      }
     };
   }, []);
 

@@ -89,7 +89,9 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
       clearInterval(refreshInterval);
       window.removeEventListener("audioLevelUpdated", handleAudioLevel);
       window.removeEventListener("soundDetected", handleSoundDetected);
-      ws.close();
+      if (ws) {
+        ws.close();
+      }
     };
   }, [deviceId]);
 
@@ -126,7 +128,10 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
 
       // При первоначальной загрузке загружаем детекции
       if (isInitial) {
-        const deviceDetections = await apiClient.getDeviceEvents(deviceId, 1000);
+        const deviceDetections = await apiClient.getDeviceEvents(
+          deviceId,
+          1000,
+        );
         setDetections(deviceDetections);
 
         if (deviceDetections.length > 0) {
@@ -200,15 +205,12 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
             >
               <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" />
             </button>
-            <div
-              className="flex items-center gap-3 sm:gap-4 cursor-pointer group"
-              onClick={() => window.location.reload()}
-            >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 cursor-pointer">
+            <div className="flex items-center gap-3 sm:gap-4 group">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
                 <Activity className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent cursor-pointer">
+                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   {device.name}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-600">
@@ -228,7 +230,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {/* 1) Модель */}
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 group hover:shadow-lg transition-all duration-200">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -239,22 +241,22 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 </p>
               </div>
             </div>
-            
+
             {/* 2) Микрофон */}
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 group hover:shadow-lg transition-all duration-200">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div>
                 <p className="text-xs text-gray-600 font-medium">Микрофон</p>
                 <p className="font-semibold text-gray-900 text-sm sm:text-base">
-                  {device.microphone_info || 'Неизвестно'}
+                  {device.microphone_info || "Неизвестно"}
                 </p>
               </div>
             </div>
-            
+
             {/* 3) IP-адрес */}
-            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
+            <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 group hover:shadow-lg transition-all duration-200">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
                 <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
@@ -265,7 +267,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 </p>
               </div>
             </div>
-            
+
             {/* 4) MAC-адрес */}
             <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
@@ -278,7 +280,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 </p>
               </div>
             </div>
-            
+
             {/* 5) ID */}
             <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
@@ -291,7 +293,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 </p>
               </div>
             </div>
-            
+
             {/* 6) WiFi */}
             <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
@@ -312,7 +314,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 </p>
               </div>
             </div>
-            
+
             {/* 7) CPU */}
             <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
@@ -333,7 +335,7 @@ export function DeviceDetail({ deviceId, onBack }: Props) {
                 </p>
               </div>
             </div>
-            
+
             {/* 8) Temperature */}
             <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-100 group hover:shadow-lg transition-all duration-200 cursor-pointer">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">

@@ -1,0 +1,1442 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sound Sentinel API",
+    "description": "API для системы обнаружения звуков Sound Sentinel",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Sound Sentinel Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://localhost:8000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://192.168.0.61:8000",
+      "description": "Local network server"
+    }
+  ],
+  "paths": {
+    "/devices": {
+      "get": {
+        "summary": "Получить список всех устройств",
+        "description": "Возвращает список всех зарегистрированных устройств с их характеристиками",
+        "tags": ["Devices"],
+        "responses": {
+          "200": {
+            "description": "Список устройств получен успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesResponse"
+                },
+                "example": {
+                  "devices": [
+                    {
+                      "id": "0d47631a-b266-47b7-9116-c551656974c5",
+                      "name": "Device 74c5",
+                      "ip_address": "192.168.0.228",
+                      "mac_address": "00:11:22:33:44:55",
+                      "model": "Raspberry Pi 4",
+                      "model_image_url": null,
+                      "microphone_info": "USB Microphone",
+                      "wifi_signal": 85,
+                      "status": "online",
+                      "last_seen": "2026-04-19T23:46:00.000Z",
+                      "created_at": "2026-04-19T22:00:00.000Z",
+                      "cpu_usage": 12.5,
+                      "device_temperature": 45.2
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register_device": {
+      "post": {
+        "summary": "Зарегистрировать новое устройство",
+        "description": "Регистрирует новое устройство или обновляет существующее по MAC-адресу",
+        "tags": ["Devices"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegistration"
+              },
+              "example": {
+                "name": "Living Room Sensor",
+                "ip_address": "192.168.0.100",
+                "mac_address": "00:11:22:33:44:55",
+                "model": "Raspberry Pi 4",
+                "model_image_url": "https://example.com/image.jpg",
+                "microphone_info": "USB Microphone",
+                "wifi_signal": 85
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Устройство успешно зарегистрировано",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistrationResponse"
+                },
+                "example": {
+                  "device_id": "0d47631a-b266-47b7-9116-c551656974c5",
+                  "status": "registered"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detect_sound": {
+      "post": {
+        "summary": "Обнаружить звук",
+        "description": "Принимает аудиоданные и возвращает тип обнаруженного звука с уверенностью",
+        "tags": ["Sound Detection"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioData"
+              },
+              "example": {
+                "device_id": "0d47631a-b266-47b7-9116-c551656974c5",
+                "audio_data": [0.1, -0.2, 0.3, 0.0, 0.1],
+                "sample_rate": 16000,
+                "db_level": 65.5,
+                "timestamp": "2026-04-19T23:46:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Звук успешно обнаружен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SoundDetectionResponse"
+                },
+                "examples": {
+                  "yamnet_sound": {
+                    "summary": "Звук из YAMNet",
+                    "value": {
+                      "sound_type": "Speech",
+                      "confidence": 0.85
+                    }
+                  },
+                  "custom_sound": {
+                    "summary": "Кастомный звук",
+                    "value": {
+                      "sound_type": "Baby crying",
+                      "confidence": 0.92
+                    }
+                  },
+                  "error": {
+                    "summary": "Ошибка детекции",
+                    "value": {
+                      "sound_type": "error",
+                      "confidence": 0.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/{device_id}": {
+      "get": {
+        "summary": "Получить историю детекций устройства",
+        "description": "Возвращает историю обнаруженных звуков для указанного устройства",
+        "tags": ["Sound Detection"],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1000,
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "example": 50
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "История детекций получена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionsResponse"
+                },
+                "example": {
+                  "detections": [
+                    {
+                      "id": "detection-123",
+                      "sound_type": "Speech",
+                      "confidence": 0.85,
+                      "timestamp": "2026-04-19T23:46:00.000Z",
+                      "embeddings": [0.1, 0.2, -0.1, 0.3]
+                    }
+                  ],
+                  "total_count": 150
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom_sounds": {
+      "get": {
+        "summary": "Получить все кастомные звуки",
+        "description": "Возвращает список всех обученных пользовательских звуков",
+        "tags": ["Custom Sounds"],
+        "responses": {
+          "200": {
+            "description": "Список кастомных звуков получен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomSound"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "sound-123",
+                    "name": "Baby crying",
+                    "sound_type": "specific",
+                    "embeddings": [[0.1, 0.2, -0.1], [0.2, 0.1, -0.2]],
+                    "centroid": [0.15, 0.15, -0.15],
+                    "threshold": 0.75,
+                    "device_id": "0d47631a-b266-47b7-9116-c551656974c5",
+                    "created_at": "2026-04-19T23:46:00.000Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Обучить новый кастомный звук",
+        "description": "Принимает несколько аудиозаписей и обучает на них новый звук",
+        "tags": ["Custom Sounds"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainSoundRequest"
+              },
+              "example": {
+                "name": "Door knock",
+                "sound_type": "specific",
+                "device_id": "0d47631a-b266-47b7-9116-c551656974c5",
+                "audio_recordings": [
+                  [0.1, -0.2, 0.3, 0.0, 0.1],
+                  [0.2, -0.1, 0.2, 0.1, 0.0]
+                ],
+                "sample_rate": 16000,
+                "threshold": 0.8
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Звук успешно обучен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainSoundResponse"
+                },
+                "example": {
+                  "id": "sound-456",
+                  "name": "Door knock",
+                  "sound_type": "specific",
+                  "centroid": [0.15, 0.15, -0.15],
+                  "message": "Sound trained and added successfully"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Failed to extract embeddings from audio"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Model not loaded"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/custom_sounds/{sound_id}": {
+      "delete": {
+        "summary": "Удалить кастомный звук",
+        "description": "Удаляет указанный кастомный звук",
+        "tags": ["Custom Sounds"],
+        "parameters": [
+          {
+            "name": "sound_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "sound-123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Звук успешно удален",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Sound deleted successfully"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Звук не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sound not found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notification_settings/{device_id}": {
+      "get": {
+        "summary": "Получить настройки уведомлений устройства",
+        "description": "Возвращает настройки уведомлений для указанного устройства",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Настройки получены",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsResponse"
+                },
+                "example": {
+                  "notification_sounds": [
+                    {
+                      "id": "notif-1",
+                      "name": "Speech"
+                    }
+                  ],
+                  "excluded_sounds": [
+                    {
+                      "id": "excl-1",
+                      "name": "Silence"
+                    }
+                  ],
+                  "custom_sounds": [
+                    {
+                      "name": "Baby crying",
+                      "type": "specific"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notification_sounds": {
+      "post": {
+        "summary": "Добавить звук для уведомлений",
+        "description": "Добавляет звук в список уведомлений",
+        "tags": ["Notifications"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSoundRequest"
+              },
+              "example": {
+                "sound_name": "Speech",
+                "device_id": "0d47631a-b266-47b7-9116-c551656974c5"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Звук добавлен в уведомления",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Notification sound added successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notification_sounds/{sound_id}": {
+      "delete": {
+        "summary": "Удалить звук уведомления",
+        "description": "Удаляет звук из списка уведомлений",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "sound_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "notif-123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Звук уведомления удален",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Notification sound deleted successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/excluded_sounds": {
+      "post": {
+        "summary": "Добавить звук в исключения",
+        "description": "Добавляет звук в список исключений (не будут отправляться уведомления)",
+        "tags": ["Notifications"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExcludedSoundRequest"
+              },
+              "example": {
+                "sound_name": "Background noise",
+                "device_id": "0d47631a-b266-47b7-9116-c551656974c5"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Звук добавлен в исключения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Sound added to exclusions successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/excluded_sounds/{sound_id}": {
+      "delete": {
+        "summary": "Удалить звук из исключений",
+        "description": "Удаляет звук из списка исключений",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "sound_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "excl-123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Звук исключен удален",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Excluded sound deleted successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/update_device/{device_id}": {
+      "put": {
+        "summary": "Обновить информацию об устройстве",
+        "description": "Обновляет характеристики устройства (WiFi, CPU, температура и т.д.)",
+        "tags": ["Devices"],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUpdate"
+              },
+              "example": {
+                "wifi_signal": 85,
+                "microphone_info": "USB Microphone",
+                "status": "online",
+                "last_seen": "2026-04-19T23:46:00.000Z",
+                "cpu_usage": 12.5,
+                "device_temperature": 45.2
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Устройство обновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Device updated successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{device_id}": {
+      "delete": {
+        "summary": "Удалить устройство",
+        "description": "Удаляет устройство и все связанные с ним данные",
+        "tags": ["Devices"],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Устройство удалено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Device deleted successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{device_id}/detections": {
+      "delete": {
+        "summary": "Очистить историю детекций устройства",
+        "description": "Удаляет всю историю детекций для указанного устройства",
+        "tags": ["Sound Detection"],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "История детекций очищена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Detection history cleared successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/update_audio_level": {
+      "post": {
+        "summary": "Обновить уровень звука",
+        "description": "Принимает данные об уровне звука и рассылает через WebSocket",
+        "tags": ["Real-time"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioLevel"
+              },
+              "example": {
+                "device_id": "0d47631a-b266-47b7-9116-c551656974c5",
+                "db_level": 65.5,
+                "timestamp": "2026-04-19T23:46:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Уровень звука обновлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "status": "success"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/yamnet_sounds": {
+      "get": {
+        "summary": "Получить список звуков YAMNet",
+        "description": "Возвращает все доступные звуки из предобученной модели YAMNet",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "Список звуков YAMNet получен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YamnetSoundsResponse"
+                },
+                "example": {
+                  "sounds": [
+                    "Speech",
+                    "Music",
+                    "Dog bark",
+                    "Cat meow",
+                    "Door knock",
+                    "Baby crying",
+                    "Silence"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Проверить здоровье API",
+        "description": "Возвращает статус работы API и загруженности моделей",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "API работает нормально",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "healthy",
+                  "model_loaded": true,
+                  "devices_count": 3,
+                  "uptime": "2h 15m 30s"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ws": {
+      "get": {
+        "summary": "WebSocket соединение",
+        "description": "Устанавливает WebSocket соединение для real-time обновлений",
+        "tags": ["WebSocket"],
+        "responses": {
+          "101": {
+            "description": "WebSocket соединение установлено"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeviceRegistration": {
+        "type": "object",
+        "required": ["name", "ip_address", "mac_address", "model"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Название устройства",
+            "example": "Living Room Sensor"
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP-адрес устройства",
+            "example": "192.168.0.100"
+          },
+          "mac_address": {
+            "type": "string",
+            "description": "MAC-адрес устройства",
+            "example": "00:11:22:33:44:55"
+          },
+          "model": {
+            "type": "string",
+            "description": "Модель устройства",
+            "example": "Raspberry Pi 4"
+          },
+          "model_image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL изображения устройства",
+            "example": "https://example.com/device.jpg"
+          },
+          "microphone_info": {
+            "type": "string",
+            "description": "Информация о микрофоне",
+            "example": "USB Microphone"
+          },
+          "wifi_signal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Уровень WiFi сигнала в процентах",
+            "example": 85
+          }
+        }
+      },
+      "DeviceRegistrationResponse": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID зарегистрированного устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["registered"],
+            "description": "Статус регистрации",
+            "example": "registered"
+          }
+        }
+      },
+      "AudioData": {
+        "type": "object",
+        "required": ["device_id", "audio_data"],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          "audio_data": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Аудиоданные в формате float32",
+            "example": [0.1, -0.2, 0.3, 0.0, 0.1]
+          },
+          "sample_rate": {
+            "type": "integer",
+            "default": 16000,
+            "description": "Частота дискретизации аудио",
+            "example": 16000
+          },
+          "db_level": {
+            "type": "number",
+            "description": "Уровень звука в децибелах",
+            "example": 65.5
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Временная метка аудио",
+            "example": "2026-04-19T23:46:00.000Z"
+          }
+        }
+      },
+      "SoundDetectionResponse": {
+        "type": "object",
+        "properties": {
+          "sound_type": {
+            "type": "string",
+            "description": "Тип обнаруженного звука",
+            "example": "Speech"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Уверенность детекции (0-1)",
+            "example": 0.85
+          }
+        }
+      },
+      "DevicesResponse": {
+        "type": "object",
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Device"
+            },
+            "description": "Список устройств"
+          }
+        }
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название устройства",
+            "example": "Living Room Sensor"
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP-адрес устройства",
+            "example": "192.168.0.100"
+          },
+          "mac_address": {
+            "type": "string",
+            "description": "MAC-адрес устройства",
+            "example": "00:11:22:33:44:55"
+          },
+          "model": {
+            "type": "string",
+            "description": "Модель устройства",
+            "example": "Raspberry Pi 4"
+          },
+          "model_image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL изображения устройства",
+            "example": "https://example.com/device.jpg"
+          },
+          "microphone_info": {
+            "type": "string",
+            "description": "Информация о микрофоне",
+            "example": "USB Microphone"
+          },
+          "wifi_signal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Уровень WiFi сигнала в процентах",
+            "example": 85
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline"],
+            "description": "Статус устройства",
+            "example": "online"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время последнего подключения",
+            "example": "2026-04-19T23:46:00.000Z"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время создания",
+            "example": "2026-04-19T22:00:00.000Z"
+          },
+          "cpu_usage": {
+            "type": "number",
+            "description": "Использование CPU в процентах",
+            "example": 12.5
+          },
+          "device_temperature": {
+            "type": "number",
+            "description": "Температура устройства в градусах Цельсия",
+            "example": 45.2
+          }
+        }
+      },
+      "CustomSound": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID кастомного звука",
+            "example": "sound-123"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название звука",
+            "example": "Baby crying"
+          },
+          "sound_type": {
+            "type": "string",
+            "enum": ["specific", "excluded"],
+            "description": "Тип звука: specific - для уведомлений, excluded - для игнорирования",
+            "example": "specific"
+          },
+          "embeddings": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "description": "Массив эмбеддингов аудио"
+          },
+          "centroid": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Центроид эмбеддингов"
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Порог распознавания",
+            "example": 0.75
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время создания",
+            "example": "2026-04-19T23:46:00.000Z"
+          }
+        }
+      },
+      "TrainSoundRequest": {
+        "type": "object",
+        "required": ["name", "sound_type", "device_id", "audio_recordings"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Название звука",
+            "example": "Door knock"
+          },
+          "sound_type": {
+            "type": "string",
+            "enum": ["specific", "excluded"],
+            "description": "Тип звука",
+            "example": "specific"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          "audio_recordings": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "description": "Массив аудиозаписей для обучения",
+            "example": [[0.1, -0.2, 0.3], [0.2, -0.1, 0.2]]
+          },
+          "sample_rate": {
+            "type": "integer",
+            "default": 16000,
+            "description": "Частота дискретизации аудио",
+            "example": 16000
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Порог распознавания",
+            "example": 0.8
+          }
+        }
+      },
+      "TrainSoundResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID обученного звука",
+            "example": "sound-456"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название звука",
+            "example": "Door knock"
+          },
+          "sound_type": {
+            "type": "string",
+            "enum": ["specific", "excluded"],
+            "description": "Тип звука",
+            "example": "specific"
+          },
+          "centroid": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Центроид эмбеддингов"
+          },
+          "message": {
+            "type": "string",
+            "description": "Сообщение об успехе",
+            "example": "Sound trained and added successfully"
+          }
+        }
+      },
+      "NotificationSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "notification_sounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationSound"
+            },
+            "description": "Список звуков для уведомлений"
+          },
+          "excluded_sounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExcludedSound"
+            },
+            "description": "Список исключенных звуков"
+          },
+          "custom_sounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomSoundInfo"
+            },
+            "description": "Список кастомных звуков"
+          }
+        }
+      },
+      "NotificationSound": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID звука уведомления",
+            "example": "notif-1"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название звука",
+            "example": "Speech"
+          }
+        }
+      },
+      "ExcludedSound": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID исключенного звука",
+            "example": "excl-1"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название звука",
+            "example": "Silence"
+          }
+        }
+      },
+      "CustomSoundInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Название звука",
+            "example": "Baby crying"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["specific", "excluded"],
+            "description": "Тип звука",
+            "example": "specific"
+          }
+        }
+      },
+      "NotificationSoundRequest": {
+        "type": "object",
+        "required": ["sound_name", "device_id"],
+        "properties": {
+          "sound_name": {
+            "type": "string",
+            "description": "Название звука для уведомлений",
+            "example": "Speech"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          }
+        }
+      },
+      "ExcludedSoundRequest": {
+        "type": "object",
+        "required": ["sound_name", "device_id"],
+        "properties": {
+          "sound_name": {
+            "type": "string",
+            "description": "Название звука для исключения",
+            "example": "Background noise"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          }
+        }
+      },
+      "DeviceUpdate": {
+        "type": "object",
+        "properties": {
+          "wifi_signal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Уровень WiFi сигнала в процентах",
+            "example": 85
+          },
+          "microphone_info": {
+            "type": "string",
+            "description": "Информация о микрофоне",
+            "example": "USB Microphone"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline"],
+            "description": "Статус устройства",
+            "example": "online"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время последнего подключения",
+            "example": "2026-04-19T23:46:00.000Z"
+          },
+          "cpu_usage": {
+            "type": "number",
+            "description": "Использование CPU в процентах",
+            "example": 12.5
+          },
+          "device_temperature": {
+            "type": "number",
+            "description": "Температура устройства в градусах Цельсия",
+            "example": 45.2
+          }
+        }
+      },
+      "AudioLevel": {
+        "type": "object",
+        "required": ["device_id", "db_level", "timestamp"],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID устройства",
+            "example": "0d47631a-b266-47b7-9116-c551656974c5"
+          },
+          "db_level": {
+            "type": "number",
+            "description": "Уровень звука в децибелах",
+            "example": 65.5
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Временная метка",
+            "example": "2026-04-19T23:46:00.000Z"
+          }
+        }
+      },
+      "DetectionsResponse": {
+        "type": "object",
+        "properties": {
+          "detections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Detection"
+            },
+            "description": "Список детекций"
+          },
+          "total_count": {
+            "type": "integer",
+            "description": "Общее количество детекций",
+            "example": 150
+          }
+        }
+      },
+      "Detection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID детекции",
+            "example": "detection-123"
+          },
+          "sound_type": {
+            "type": "string",
+            "description": "Тип обнаруженного звука",
+            "example": "Speech"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Уверенность детекции",
+            "example": 0.85
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время детекции",
+            "example": "2026-04-19T23:46:00.000Z"
+          },
+          "embeddings": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Эмбеддинги аудио"
+          }
+        }
+      },
+      "YamnetSoundsResponse": {
+        "type": "object",
+        "properties": {
+          "sounds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Список доступных звуков YAMNet"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "unhealthy"],
+            "description": "Статус API",
+            "example": "healthy"
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "description": "Загружена ли модель YAMNet",
+            "example": true
+          },
+          "devices_count": {
+            "type": "integer",
+            "description": "Количество зарегистрированных устройств",
+            "example": 3
+          },
+          "uptime": {
+            "type": "string",
+            "description": "Время работы сервера",
+            "example": "2h 15m 30s"
+          }
+        }
+      },
+      "SuccessMessage": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Сообщение об успехе",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "Описание ошибки",
+            "example": "Resource not found"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Devices",
+      "description": "Управление устройствами"
+    },
+    {
+      "name": "Sound Detection",
+      "description": "Обнаружение и история звуков"
+    },
+    {
+      "name": "Custom Sounds",
+      "description": "Пользовательские звуки"
+    },
+    {
+      "name": "Notifications",
+      "description": "Настройки уведомлений"
+    },
+    {
+      "name": "Real-time",
+      "description": "Real-time обновления"
+    },
+    {
+      "name": "System",
+      "description": "Системные эндпоинты"
+    },
+    {
+      "name": "WebSocket",
+      "description": "WebSocket соединения"
+    }
+  ]
+}

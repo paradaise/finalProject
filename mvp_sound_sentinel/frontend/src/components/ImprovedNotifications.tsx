@@ -39,7 +39,6 @@ export function ImprovedNotificationManager({ onSoundDetected }: Props) {
   useEffect(() => {
     const handleSoundDetected = (event: any) => {
       const data = event.detail; // Получаем данные из CustomEvent
-      console.log('🔔 Notification received:', data); // Логируем для отладки
       const { sound_type, confidence, device_id, timestamp, should_notify } = data;
       
       // Проверяем нужно ли показывать уведомление
@@ -58,7 +57,6 @@ export function ImprovedNotificationManager({ onSoundDetected }: Props) {
         isRead: false,
       };
       
-      console.log('🔔 Creating notification:', notification); // Логируем уведомление
       
       setNotifications(prev => {
         // Проверяем на дубликаты

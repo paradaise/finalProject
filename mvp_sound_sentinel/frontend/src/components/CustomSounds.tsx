@@ -11,7 +11,6 @@ interface Props {
 }
 
 export function CustomSounds({ sounds, onBack, onRefresh, selectedDeviceId }: Props) {
-  console.log('CustomSounds props:', { sounds, selectedDeviceId });
   
   const excludedSounds = sounds.filter(s => s.sound_type === 'excluded');
   const specificSounds = sounds.filter(s => s.sound_type === 'specific');

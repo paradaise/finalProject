@@ -73,11 +73,16 @@ reset_*.py
 *.pem
 *.der
 
-# YAMNet кэш
+# YAMNet cache
 backend/cache/yamnet/
 
+# Test folders
+model_test/
+custom_sounds_detection_test/
 
 #папка с тестами
 
-test_audio
 documents
+model_analysis
+audio_analysis
+custom_algoritm_analysis
