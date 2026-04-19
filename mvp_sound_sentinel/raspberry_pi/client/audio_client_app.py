@@ -112,12 +112,12 @@ class AudioClient:
             if not device_info:
                 return False
 
-            print(f"📡 Регистрация устройства: {device_info['name']}")
-            print(f"🖥️ Модель: {device_info['model']}")
-            print(f"🎤 Микрофон: {device_info['microphone_info']}")
-            print(f"📡 WiFi сигнал: {device_info['wifi_signal']}%")
-            print(f"🌐 IP адрес: {device_info['ip_address']}")
-            print(f"🔗 MAC адрес: {device_info['mac_address']}")
+            print(f"Регистрация устройства: {device_info['name']}")
+            print(f"Модель: {device_info['model']}")
+            print(f"Микрофон: {device_info['microphone_info']}")
+            print(f"WiFi сигнал: {device_info['wifi_signal']}%")
+            print(f"IP адрес: {device_info['ip_address']}")
+            print(f"MAC адрес: {device_info['mac_address']}")
 
             response = self.session.post(
                 f"{API_SERVER_URL}/register_device",
@@ -128,15 +128,13 @@ class AudioClient:
             if response.status_code == 200:
                 data = response.json()
                 self.device_id = data["device_id"]
-                print(f"✅ Устройство успешно зарегистрировано! ID: {self.device_id}")
+                print(f"Устройство успешно зарегистрировано! ID: {self.device_id}")
                 return True
             else:
-                print(
-                    f"❌ Ошибка регистрации: {response.status_code} - {response.text}"
-                )
+                print(f"Ошибка регистрации: {response.status_code} - {response.text}")
                 return False
         except Exception as e:
-            print(f"❌ Ошибка регистрации устройства: {e}")
+            print(f"Ошибка регистрации устройства: {e}")
             return False
 
     def init_audio(self):
@@ -145,7 +143,7 @@ class AudioClient:
             with _alsa_suppress.suppress_alsa_errors():
                 self.audio = pyaudio.PyAudio()
 
-            print("🎤 Поиск и проверка доступных аудио устройств...")
+            print("Поиск и проверка доступных аудио устройств...")
             supported_devices = []
 
             device_count = self.audio.get_device_count()
@@ -163,18 +161,18 @@ class AudioClient:
                             if is_supported:
                                 supported_devices.append(i)
                                 print(
-                                    f"  [✅] Устройство {i}: {info['name']} (поддерживает {SAMPLE_RATE} Hz)"
+                                    f"  [OK] Устройство {i}: {info['name']} (поддерживает {SAMPLE_RATE} Hz)"
                                 )
                             else:
                                 print(
-                                    f"  [❌] Устройство {i}: {info['name']} (не поддерживает {SAMPLE_RATE} Hz)"
+                                    f"  [X] Устройство {i}: {info['name']} (не поддерживает {SAMPLE_RATE} Hz)"
                                 )
                     except Exception:
-                        print(f"  [⚠️] Не удалось проверить устройство {i}")
+                        print(f"  [!] Не удалось проверить устройство {i}")
 
             if not supported_devices:
-                print("❌ Ни одно устройство не поддерживает 16000 Hz!")
-                print("🔄 Пробуем стандартную частоту 44100 Hz...")
+                print("Ни одно устройство не поддерживает 16000 Hz!")
+                print("Пробуем стандартную частоту 44100 Hz...")
                 return self.init_audio_fallback()
 
             device_priority = {}
@@ -198,7 +196,7 @@ class AudioClient:
             for device_index in priority_devices:
                 try:
                     device_info = self.audio.get_device_info_by_index(device_index)
-                    print(f"🎤 Пробую устройство: {device_info['name']}")
+                    print(f"Пробую устройство: {device_info['name']}")
 
                     self.stream = self.audio.open(
                         format=FORMAT,
@@ -209,19 +207,19 @@ class AudioClient:
                         frames_per_buffer=CHUNK_SIZE,
                     )
 
-                    print(f"✅ Аудио поток инициализирован с {device_info['name']}")
+                    print(f"Аудио поток инициализирован с {device_info['name']}")
                     return True
                 except Exception as e:
-                    print(f"❌ Устройство {device_info['name']} недоступно: {e}")
+                    print(f"Устройство {device_info['name']} недоступно: {e}")
                     continue
 
-            print("❌ Все устройства недоступны!")
-            print("🔄 Пробуем запасной вариант...")
+            print("Все устройства недоступны!")
+            print("Пробуем запасной вариант...")
             return self.init_audio_fallback()
 
         except Exception as e:
-            print(f"❌ Ошибка инициализации аудио: {e}")
-            print("🔄 Пробуем запасной вариант...")
+            print(f"Ошибка инициализации аудио: {e}")
+            print("Пробуем запасной вариант...")
             return self.init_audio_fallback()
 
     def init_audio_fallback(self):
@@ -229,7 +227,7 @@ class AudioClient:
         try:
             fallback_sample_rate = 44100
 
-            print(f"🔄 Пробую инициализировать с {fallback_sample_rate} Hz...")
+            print(f"Пробую инициализировать с {fallback_sample_rate} Hz...")
 
             device_index = None
             for i in range(self.audio.get_device_count()):
@@ -239,11 +237,11 @@ class AudioClient:
                     break
 
             if device_index is None:
-                print("❌ Не найдено аудио устройств!")
+                print("Не найдено аудио устройств!")
                 return False
 
             device_info = self.audio.get_device_info_by_index(device_index)
-            print(f"🎤 Используем устройство: {device_info['name']}")
+            print(f"Используем устройство: {device_info['name']}")
 
             self.stream = self.audio.open(
                 format=FORMAT,
@@ -255,11 +253,11 @@ class AudioClient:
             )
 
             self.fallback_sample_rate = fallback_sample_rate
-            print(f"✅ Аудио поток инициализирован с {fallback_sample_rate} Hz")
+            print(f"Аудио поток инициализирован с {fallback_sample_rate} Hz")
             return True
 
         except Exception as e:
-            print(f"❌ Ошибка запасной инициализации аудио: {e}")
+            print(f"Ошибка запасной инициализации аудио: {e}")
             return False
 
     def resample_audio(self, audio_data, original_rate, target_rate):
@@ -302,12 +300,12 @@ class AudioClient:
 
                 if confidence > DETECTION_CONFIDENCE_THRESHOLD:
                     timestamp = datetime.now().strftime("%H:%M:%S")
-                    print(f"🎵 [{timestamp}] {sound_type}: {confidence:.1%}")
+                    print(f"[{timestamp}] {sound_type}: {confidence:.1%}")
             else:
-                print(f"❌ Ошибка детекции: {response.status_code}")
+                print(f"Ошибка детекции: {response.status_code}")
 
         except requests.exceptions.Timeout:
-            print(f"⏰ Таймаут отправки аудио, пробую еще раз...")
+            print(f"Таймаут отправки аудио, пробую еще раз...")
             try:
                 response = self.session.post(
                     f"{API_SERVER_URL}/detect_sound",
@@ -320,14 +318,14 @@ class AudioClient:
                     confidence = result["confidence"]
                     if confidence > DETECTION_CONFIDENCE_THRESHOLD:
                         timestamp = datetime.now().strftime("%H:%M:%S")
-                        print(f"🎵 [{timestamp}] {sound_type}: {confidence:.1%}")
+                        print(f"[{timestamp}] {sound_type}: {confidence:.1%}")
             except:
-                print(f"❌ Повторная попытка не удалась")
+                print(f"Повторная попытка не удалась")
         except Exception as e:
             if "timed out" in str(e).lower():
-                print(f"⏰ Ошибка таймаута отправки аудио")
+                print(f"Ошибка таймаута отправки аудио")
             else:
-                print(f"❌ Ошибка отправки аудио: {e}")
+                print(f"Ошибка отправки аудио: {e}")
 
     def send_audio_level(self, normalized_db):
         """Отправка только уровня звука"""
@@ -348,14 +346,14 @@ class AudioClient:
     def restart_audio_stream(self):
         """Перезапуск аудио потока при ошибках"""
         try:
-            print("🔄 Перезапуск аудио потока...")
+            print("Перезапуск аудио потока...")
             if self.stream:
                 self.stream.stop_stream()
                 self.stream.close()
 
             return self.init_audio()
         except Exception as e:
-            print(f"❌ Ошибка перезапуска аудио: {e}")
+            print(f"Ошибка перезапуска аудио: {e}")
             return False
 
     def update_device_info(self):
@@ -379,12 +377,13 @@ class AudioClient:
                 )
 
                 if response.status_code == 200:
-                    # Successfully updated device info
-                    pass
+                    print(
+                        f"Телеметрия: WiFi {device_info['wifi_signal']}% | CPU {device_info['cpu_usage']:.1f}% | Temp {device_info['device_temperature']:.1f}C"
+                    )
                 else:
                     print(f"Error updating WiFi: {response.status_code}")
         except Exception as e:
-            print(f"❌ Ошибка обновления информации об устройстве: {e}")
+            print(f"Ошибка обновления информации об устройстве: {e}")
 
     def update_wifi_signal(self):
         """Separate update of WiFi signal, CPU and temperature."""
@@ -408,15 +407,16 @@ class AudioClient:
             )
 
             if response.status_code == 200:
-                # Successfully updated WiFi signal
-                pass
+                print(
+                    f"Телеметрия: WiFi {device_info['wifi_signal']}% | CPU {device_info['cpu_usage']:.1f}% | Temp {device_info['device_temperature']:.1f}C"
+                )
         except Exception as e:
             print(f"PUT request failed: {e}")
 
     def audio_loop(self):
         """Основной цикл записи и отправки аудио"""
         print(
-            f"🎙️ Начинаю мониторинг (дБ каждые {LEVEL_UPDATE_INTERVAL}s, детекция каждые {DETECTION_INTERVAL}s)..."
+            f"Начинаю мониторинг (дБ каждые {LEVEL_UPDATE_INTERVAL}s, детекция каждые {DETECTION_INTERVAL}s)..."
         )
 
         audio_buffer = []
@@ -437,7 +437,7 @@ class AudioClient:
                     raw_data = self.stream.read(chunk_size, exception_on_overflow=False)
                     audio_data = np.frombuffer(raw_data, dtype=np.float32)
                 except Exception as e:
-                    print(f"❌ Ошибка чтения аудио: {e}")
+                    print(f"Ошибка чтения аудио: {e}")
                     if not self.restart_audio_stream():
                         break
                     continue
@@ -479,18 +479,18 @@ class AudioClient:
                     last_wifi_update = now
 
         except Exception as e:
-            print(f"❌ Ошибка в аудио цикле: {e}")
+            print(f"Ошибка в аудио цикле: {e}")
 
     def start(self):
         """Запуск клиента"""
-        print("🚀 Запуск Sound Sentinel Audio Client...")
+        print("Запуск Sound Sentinel Audio Client...")
 
         if not self.register_device():
-            print("❌ Не удалось зарегистрировать устройство!")
+            print("Не удалось зарегистрировать устройство!")
             return
 
         if not self.init_audio():
-            print("❌ Не удалось инициализировать аудио!")
+            print("Не удалось инициализировать аудио!")
             return
 
         self.is_running = True
@@ -498,7 +498,7 @@ class AudioClient:
         audio_thread = threading.Thread(target=self.audio_loop, daemon=True)
         audio_thread.start()
 
-        print("✅ Клиент запущен! Нажмите Ctrl+C для остановки.")
+        print("Клиент запущен! Нажмите Ctrl+C для остановки.")
 
         try:
             while self.is_running:
@@ -506,7 +506,7 @@ class AudioClient:
 
                 time.sleep(1)
         except KeyboardInterrupt:
-            print("\n🛑 Остановка клиента...")
+            print("\nОстановка клиента...")
             self.stop()
 
     def stop(self):
@@ -526,7 +526,7 @@ class AudioClient:
             except:
                 pass
 
-        print("✅ Клиент остановлен")
+        print("Клиент остановлен")
 
 
 @contextmanager
@@ -548,7 +548,7 @@ def main():
     try:
         client.start()
     except Exception as e:
-        print(f"❌ Критическая ошибка: {e}")
+        print(f"Критическая ошибка: {e}")
         sys.exit(1)
 
 
