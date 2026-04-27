@@ -34,7 +34,7 @@ from config import (
     DETECTION_CONFIDENCE_THRESHOLD,
 )
 
-import alsa_suppress as _alsa_suppress
+#import alsa_suppress as _alsa_suppress
 import audio_math as _audio_math
 import audio_enhancement as _audio_enhancement
 import device_info as _device_info
