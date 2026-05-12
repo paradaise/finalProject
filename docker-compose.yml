@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 # ─── Sound Sentinel — Docker Compose ─────────────────────────────────────────
 # Перед запуском:
@@ -7,7 +7,6 @@ version: '3.9'
 #   3. docker compose up -d --build
 
 services:
-
   # ── Backend API ─────────────────────────────────────────────────────────────
   backend:
     build:
@@ -18,9 +17,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data/db:/app/data                                  # SQLite БД
-      - ./mvp_sound_sentinel/backend/certs:/app/certs:ro     # SSL сертификаты (read-only)
-      - yamnet-model-cache:/app/cache/yamnet                 # Кэш YAMNet (~500MB, скачивается 1 раз)
+      - ./data/db:/app/data # SQLite БД
+      - ./mvp_sound_sentinel/backend/certs:/app/certs:ro # SSL сертификаты (read-only)
+      - yamnet-model-cache:/app/cache/yamnet # Кэш YAMNet (~500MB, скачивается 1 раз)
     environment:
       - DB_PATH=/app/data/sound_sentinel.db
       - YAMNET_CACHE_DIR=/app/cache/yamnet
@@ -40,7 +39,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 90s   # YAMNet грузится ~60 сек при первом запуске
+      start_period: 90s # YAMNet грузится ~60 сек при первом запуске
 
   # ── Frontend ─────────────────────────────────────────────────────────────────
   frontend:
