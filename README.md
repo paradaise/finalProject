@@ -1,409 +1,619 @@
-# Sound Sentinel
+# 🎙️ Sound Sentinel
 
-**Интеллектуальная система мониторинга звуков в реальном времени**
+**Интеллектуальная система мониторинга звуков в реальном времени**  
+Разработана для помощи людям с нарушениями слуха и для умного мониторинга помещений.
 
-## 📋 Обзор
+---
 
-Sound Sentinel - это распределенная система для обнаружения и классификации звуков с использованием Raspberry Pi в качестве устройств сбора данных и веб-интерфейса для мониторинга.
+## 📌 Что умеет приложение
+
+- **Обнаружение звуков в реальном времени** — классификация 521 класса звуков через модель YAMNet (Google AudioSet)
+- **Push-уведомления** — мгновенные оповещения при обнаружении важных звуков (пожарная сигнализация, плач ребёнка, разбитое стекло и др.)
+- **Пользовательские звуки** — обучение системы на своих звуках (3–5 аудиозаписей + cosine similarity)
+- **Множество устройств** — поддержка нескольких Raspberry Pi одновременно
+- **WebSocket real-time** — моментальная передача данных на веб-интерфейс
+- **Гибкие настройки** — управление списком уведомляемых и исключённых звуков
+- **Мониторинг устройств** — CPU, температура, уровень WiFi сигнала, уровень звука
+
+---
 
 ## 🏗️ Архитектура системы
 
 ```
-┌─────────────────┐    WiFi/Network    ┌─────────────────┐    HTTP/WebSocket    ┌─────────────────┐
-│   Raspberry Pi  │ ────────────────── │   API Server    │ ────────────────── │   Web Client    │
-│   (Audio Client)│                    │  (FastAPI + DB) │                    │   (React + TS)  │
-└─────────────────┘                    └─────────────────┘                    └─────────────────┘
-        │                                      │                                      │
-        │ 1. Захват аудио                      │ 2. Детекция звука                   │ 3. Отображение
-        │ 2. Отправка на сервер                │ 3. Сохранение в БД                  │ 4. Управление
-        │ 3. Получение команд                  │ 4. WebSocket обновления             │ 5. Настройки
-        └──────────────────────────────────────┴──────────────────────────────────────┴──────────────────────────────────────┘
+┌─────────────────────┐         ┌─────────────────────┐         ┌─────────────────────┐
+│    Raspberry Pi     │  HTTP/  │     API Server      │  HTTP/  │    Веб-браузер      │
+│   (Audio Client)    │◄───────►│  FastAPI + SQLite   │◄───────►│   React + Vite      │
+│                     │  HTTPS  │                     │   WS    │                     │
+│ • Захват аудио      │         │ • YAMNet детекция   │         │ • Список устройств  │
+│ • Ресемплинг 16kHz  │         │ • Хранение данных   │         │ • История детекций  │
+│ • Отправка чанков   │         │ • WebSocket broadcast│        │ • Настройки звуков  │
+│ • Системные метрики │         │ • REST API          │         │ • Уведомления       │
+└─────────────────────┘         └─────────────────────┘         └─────────────────────┘
 ```
 
-## 🔄 Процесс детекции звуков
-
-### 1. Захват аудио на Raspberry Pi
-
-```python
-# Параметры захвата
-SAMPLE_RATE = 16000 Hz     # Стандартная частота для YAMNet
-CHANNELS = 1               # Моно
-CHUNK_DURATION = 3 сек     # Длительность чанка
-FORMAT = Float32           # Формат сэмплов
-```
-
-### 2. Обработка и отправка
-
-```python
-# Цикл обработки
-while is_running:
-    audio_data = capture_audio_chunk()      # Захват 3-секундного чанка
-    resampled = resample_to_16000(audio)     # Ресемплинг если нужно
-    send_to_server(resampled)               # HTTP POST на API
-    sleep(3)                                # Пауза между чанками
-```
-
-### 3. Детекция на сервере
-
-```python
-# YAMNet детекция
-def detect_sound(audio_data):
-    embeddings = yamnet(audio_data)         # Извлечение признаков
-    predictions = classifier(embeddings)     # Классификация
-    return top_predictions(predictions)      # Топ-5 результатов
-```
-
-## 🌐 Протоколы взаимодействия
-
-### HTTP API
-
-- `POST /register_device` - Регистрация устройства
-- `POST /detect_sound` - Детекция звука
-- `GET /devices` - Список устройств
-- `DELETE /devices/{id}` - Удаление устройства
-- `GET /detections/{device_id}` - История детекций
-
-### WebSocket
-
-- `ws://server:8000/ws` - Реальные обновления
-- События: `device_registered`, `device_deleted`, `sound_detected`
-
-### База данных (SQLite)
-
-```sql
-CREATE TABLE devices (
-    id TEXT PRIMARY KEY,                    -- UUID устройства
-    name TEXT NOT NULL,                      -- Имя устройства
-    ip_address TEXT NOT NULL,               -- IP адрес
-    mac_address TEXT NOT NULL,              -- MAC адрес
-    model TEXT DEFAULT 'Unknown',           -- Модель устройства
-    model_image_url TEXT,                    -- URL изображения модели
-    microphone_info TEXT,                   -- Информация о микрофоне
-    wifi_signal INTEGER DEFAULT 0,          -- Сигнал WiFi (%)
-    status TEXT DEFAULT 'offline',          -- Статус
-    last_seen TEXT,                          -- Последняя активность
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE sound_detections (
-    id TEXT PRIMARY KEY,                    -- UUID детекции
-    device_id TEXT NOT NULL,                -- ID устройства
-    sound_type TEXT NOT NULL,               -- Тип звука
-    confidence REAL NOT NULL,               -- Уверенность (0-1)
-    timestamp TEXT NOT NULL,                -- Время детекции
-    mfcc_features TEXT,                     -- MFCC признаки (JSON)
-    FOREIGN KEY (device_id) REFERENCES devices(id)
-);
-
-CREATE TABLE custom_sounds (
-    id TEXT PRIMARY KEY,                    -- UUID звука
-    name TEXT NOT NULL,                      -- Название
-    sound_type TEXT NOT NULL,               -- Тип (excluded/important)
-    mfcc_features TEXT NOT NULL,           -- MFCC признаки
-    device_id TEXT NOT NULL,                -- ID устройства
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (device_id) REFERENCES devices(id)
-);
-```
-
-## 🎯 Основные классы YAMNet для тестирования
-
-YAMNet обучен на **AudioSet-YouTube** датасете и распознает **521 класс звуков**:
-
-### 🔊 Человеческие звуки
-
-- `Speech`, `Laughter`, `Crying baby`, `Sneeze`, `Cough`
-- `Footsteps`, `Clapping`, `Finger snapping`
-
-### 🎵 Музыкальные инструменты
-
-- `Piano`, `Guitar`, `Violin`, `Drums`, `Flute`
-- `Singing`, `Whistling`, `Humming`
-
-### 🏠 Бытовые звуки
-
-- `Doorbell`, `Telephone bell ringing`, `Alarm`
-- `Microwave oven`, `Dishwasher`, `Vacuum cleaner`
-- `Typing`, `Computer keyboard`, `Mouse click`
-
-### 🚖 Транспорт и улица
-
-- `Car horn`, `Siren`, `Traffic noise`, `Train`
-- `Airplane`, `Helicopter`, `Boat`
-
-### 🌿 Природа
-
-- `Bird`, `Dog`, `Cat`, `Insect`, `Wind`
-- `Rain`, `Thunder`, `Water`, `Fire`
-
-### 🏭 Промышленные
-
-- `Power tool`, `Drill`, `Saw`, `Hammer`
-- `Engine`, `Generator`, `Machinery`
-
-## 🛠️ Технологический стек
-
-### Backend
-
-- **FastAPI** - Веб-фреймворк API
-- **SQLite** - База данных
-- **TensorFlow** - Машинное обучение
-- **YAMNet** - Модель детекции звуков
-- **WebSocket** - Реальное время
-
-### Frontend
-
-- **React 18** - UI фреймворк
-- **TypeScript** - Типизация
-- **TailwindCSS** - Стилизация
-- **Lucide** - Иконки
-
-### Client (Raspberry Pi)
-
-- **Python 3.9+** - Основной язык
-- **PyAudio** - Захват аудио
-- **NumPy** - Обработка данных
-- **Requests** - HTTP клиент
-
-## 📊 Схема данных
+### Поток обработки звука
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        SOUND SENTINEL                           │
-│                        DATABASE SCHEMA                          │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     DEVICES     │    │ SOUND_DETECTIONS│    │  CUSTOM_SOUNDS  │
-├─────────────────┤    ├─────────────────┤    ├─────────────────┤
-│ id (PK)         │◄───┤ device_id (FK) │◄───┤ device_id (FK) │
-│ name            │    │ id (PK)         │    │ id (PK)         │
-│ ip_address      │    │ sound_type      │    │ name            │
-│ mac_address     │    │ confidence      │    │ sound_type      │
-│ model           │    │ timestamp       │    │ mfcc_features   │
-│ model_image_url │    │ mfcc_features   │    │ created_at      │
-│ microphone_info │    └─────────────────┘    └─────────────────┘
-│ wifi_signal     │
-│ status          │
-│ last_seen       │
-│ created_at      │
-└─────────────────┘
+Микрофон → PyAudio захват (3 сек) → Ресемплинг 16kHz → POST /detect_sound
+    → YAMNet embeddings → Top-5 предсказания → Cosine Similarity (custom)
+    → Фильтр уведомлений → WebSocket broadcast → Уведомление пользователю
 ```
+
+<!-- TODO: Вставить диаграмму архитектуры системы -->
+
+### Схема базы данных
+
+```
+devices              sound_detections         custom_sounds
+───────────          ────────────────         ─────────────
+id (PK)              id (PK)                  id (PK)
+name                 device_id (FK) ──────►   device_id (FK)
+ip_address           sound_type               name
+mac_address          confidence               sound_type (specific/excluded)
+model                timestamp                embeddings (JSON 1024-d)
+wifi_signal          embeddings               centroid (JSON)
+cpu_usage                                     threshold
+device_temperature   notification_sounds      excluded_sounds
+status               ───────────────          ──────────────
+last_seen            id (PK)                  id (PK)
+                     sound_name               sound_name
+                     device_id (FK)           device_id (FK)
+```
+
+<!-- TODO: Вставить ER-диаграмму базы данных -->
+
+---
 
 ## 🚀 Быстрый старт
 
-### 1. Запуск API сервера
+### Требования
+
+| Компонент | Минимум |
+|-----------|---------|
+| Python | 3.9+ |
+| Node.js | 18+ |
+| RAM (сервер) | 2 GB (YAMNet ~500MB) |
+| RAM (Raspberry Pi) | 512 MB |
+| ОС (сервер) | Ubuntu 20.04+ / macOS / Windows WSL2 |
+| ОС (Pi) | Raspberry Pi OS Lite (64-bit) |
+
+---
+
+## ⚙️ Развёртывание вручную
+
+### 1. Клонирование репозитория
 
 ```bash
-cd mvp_sound_sentinel/api_server
+git clone https://github.com/your-repo/sound-sentinel.git
+cd sound-sentinel
+```
+
+### 2. Backend (API-сервер)
+
+```bash
+cd mvp_sound_sentinel/backend
+
+# Создать виртуальное окружение
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Установить зависимости
 pip install -r requirements.txt
-python main.py
 ```
 
-### 2. Запуск веб-интерфейса
+**Необходимые библиотеки (requirements.txt):**
+
+```
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+tensorflow==2.13.0
+tensorflow-hub==0.14.0
+numpy==1.24.3
+requests==2.31.0
+python-multipart==0.0.6
+websockets==12.0
+sqlite3          # встроена в Python
+```
+
+**Генерация SSL-сертификата (требуется для доступа с браузера):**
 
 ```bash
-cd mvp_sound_sentinel/mobile_app
-npm install
-npm run dev
+mkdir -p certs
+openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem \
+  -out certs/cert.pem -days 365 -nodes \
+  -subj "/CN=192.168.0.61"  # замените на ваш IP
 ```
 
-### 3. Запуск клиента на Raspberry Pi
+**Запуск:**
+
+```bash
+# Из папки backend
+python main.py
+
+# Или через uvicorn напрямую
+uvicorn main:app --host 0.0.0.0 --port 8000 \
+  --ssl-keyfile certs/key.pem \
+  --ssl-certfile certs/cert.pem
+```
+
+Сервер будет доступен по адресу: `https://192.168.0.61:8000`  
+Документация API: `https://192.168.0.61:8000/docs`
+
+---
+
+### 3. Frontend (Веб-интерфейс)
+
+```bash
+cd mvp_sound_sentinel/frontend
+
+# Установить зависимости
+npm install
+```
+
+**Конфигурация (`src/api/client.ts`):**
+
+```typescript
+// Замените IP на адрес вашего API-сервера
+const API_BASE_URL = "https://192.168.0.61:8000";
+```
+
+**Или через `.env` файл:**
+
+```env
+# mvp_sound_sentinel/frontend/.env
+VITE_API_HOST=192.168.0.61
+VITE_API_PORT=8000
+VITE_USE_SSL=true
+```
+
+**Запуск в режиме разработки:**
+
+```bash
+npm run dev
+# Доступно по: https://localhost:3000
+```
+
+**Сборка для продакшена:**
+
+```bash
+npm run build
+npm run preview
+```
+
+> ⚠️ **Важно:** Браузер будет предупреждать о самоподписанном сертификате. Нужно добавить исключение вручную, перейдя по `https://192.168.0.61:8000` и нажав "Продолжить".
+
+---
+
+### 4. Клиент Raspberry Pi
 
 ```bash
 cd mvp_sound_sentinel/raspberry_pi
-pip install -r requirements.txt
-python audio_client.py
+
+# Установить системные зависимости
+sudo apt update && sudo apt install -y \
+  python3-pip python3-venv portaudio19-dev libportaudio2 \
+  python3-dev alsa-utils
+
+# Создать виртуальное окружение
+python3 -m venv venv
+source venv/bin/activate
+
+# Установить Python-пакеты
+pip install -r requirements_pi.txt
 ```
 
-## 📱 API Ручки
+**Необходимые библиотеки (requirements_pi.txt):**
 
-### Устройства
-
-```http
-POST /register_device
-Content-Type: application/json
-
-{
-  "name": "Raspberry Pi Monitor",
-  "ip_address": "192.168.0.228",
-  "mac_address": "68:a2:8b:2c:b1:c6",
-  "model": "Raspberry Pi Zero 2 W Rev 1.0",
-  "model_image_url": "/images/raspberry-pi-zero-2-w.png",
-  "microphone_info": "Microphone [Fifine Microphone], device 0",
-  "wifi_signal": 82
-}
+```
+pyaudio==0.2.13
+numpy==1.24.3
+requests==2.31.0
+psutil==5.9.6
+urllib3==2.1.0
 ```
 
-```http
-GET /devices
-Response: [
-  {
-    "id": "9619ab8b-35e6-41f9-b54c-cfa7bfe3c614",
-    "name": "Raspberry Pi Monitor",
-    "status": "online",
-    "last_seen": "2026-01-25T20:15:30.123456",
-    ...
-  }
-]
+**Конфигурация (`audio_client.py`):**
+
+```python
+# Настройки сервера
+API_SERVER_URL = "https://192.168.0.61:8000"   # IP вашего сервера
+VERIFY_SSL = False                               # False для самоподписанного сертификата
+
+# Настройки аудио
+SAMPLE_RATE = 16000    # Частота дискретизации (Hz)
+CHANNELS = 1           # Моно
+CHUNK_DURATION = 3     # Длительность чанка (секунды)
+DEVICE_INDEX = None    # None = системный по умолчанию, или укажите номер
 ```
 
-### Детекции
+**Найти индекс микрофона:**
 
-```http
-POST /detect_sound
-Content-Type: application/json
-
-{
-  "device_id": "9619ab8b-35e6-41f9-b54c-cfa7bfe3c614",
-  "audio_data": [0.1, -0.2, 0.3, ...],
-  "sample_rate": 16000
-}
-
-Response: {
-  "detection_id": "abc123...",
-  "sound_type": "Speech",
-  "confidence": 0.85,
-  "all_predictions": [...]
-}
+```bash
+python3 -c "
+import pyaudio
+p = pyaudio.PyAudio()
+for i in range(p.get_device_count()):
+    d = p.get_device_info_by_index(i)
+    if d['maxInputChannels'] > 0:
+        print(f'[{i}] {d[\"name\"]}')
+"
 ```
 
-## 🎛️ WebSocket события
+**Запуск:**
 
-```javascript
-// Подключение
-const ws = new WebSocket('ws://192.168.0.61:8000/ws');
+```bash
+python3 audio_client.py
+```
 
-// Новая детекция
+**Автозапуск через systemd:**
+
+```bash
+# Создать файл службы
+sudo nano /etc/systemd/system/sound-sentinel.service
+```
+
+```ini
+[Unit]
+Description=Sound Sentinel Audio Client
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/sound-sentinel/mvp_sound_sentinel/raspberry_pi
+ExecStart=/home/pi/sound-sentinel/mvp_sound_sentinel/raspberry_pi/venv/bin/python3 audio_client.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable sound-sentinel
+sudo systemctl start sound-sentinel
+sudo systemctl status sound-sentinel
+```
+
+---
+
+## 🐳 Docker развёртывание
+
+### Структура Docker-файлов
+
+```
+sound-sentinel/
+├── docker-compose.yml
+├── mvp_sound_sentinel/
+│   ├── backend/
+│   │   └── Dockerfile
+│   ├── frontend/
+│   │   └── Dockerfile
+│   └── raspberry_pi/
+│       └── Dockerfile
+```
+
+### docker-compose.yml
+
+```yaml
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./mvp_sound_sentinel/backend
+      dockerfile: Dockerfile
+    container_name: sound-sentinel-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/db:/app/data          # SQLite БД
+      - ./mvp_sound_sentinel/backend/certs:/app/certs  # SSL сертификаты
+      - yamnet-cache:/app/cache/yamnet  # Кэш модели YAMNet
+    environment:
+      - DB_PATH=/app/data/sound_sentinel.db
+      - YAMNET_CACHE_DIR=/app/cache/yamnet
+      - HOST=0.0.0.0
+      - PORT=8000
+      - SSL_KEY=/app/certs/key.pem
+      - SSL_CERT=/app/certs/cert.pem
+    restart: unless-stopped
+    networks:
+      - sentinel-net
+
+  frontend:
+    build:
+      context: ./mvp_sound_sentinel/frontend
+      dockerfile: Dockerfile
+    container_name: sound-sentinel-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_HOST=192.168.0.61   # IP сервера backend
+      - VITE_API_PORT=8000
+      - VITE_USE_SSL=true
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - sentinel-net
+
+volumes:
+  yamnet-cache:
+
+networks:
+  sentinel-net:
+    driver: bridge
+```
+
+**Запуск через Docker Compose:**
+
+```bash
+# Собрать и запустить
+docker compose up -d --build
+
+# Посмотреть логи
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Остановить
+docker compose down
+
+# Пересобрать только backend
+docker compose up -d --build backend
+```
+
+---
+
+## 🔧 Конфигурационные файлы
+
+### Backend: переменные окружения
+
+```env
+# mvp_sound_sentinel/backend/.env
+
+# База данных
+DB_PATH=./data/sound_sentinel.db
+
+# SSL
+SSL_KEY=./certs/key.pem
+SSL_CERT=./certs/cert.pem
+
+# Сервер
+HOST=0.0.0.0
+PORT=8000
+
+# YAMNet
+YAMNET_TF_HUB_URL=https://tfhub.dev/google/yamnet/1
+YAMNET_CACHE_DIR=./cache/yamnet
+
+# Настройки детекции
+CONFIDENCE_THRESHOLD=0.3
+CUSTOM_MATCH_DEFAULT_THRESHOLD=0.7
+
+# CORS (разделитель запятая)
+CORS_ORIGINS=https://localhost:3000,https://192.168.0.61:3000
+```
+
+### Frontend: переменные окружения
+
+```env
+# mvp_sound_sentinel/frontend/.env
+
+VITE_API_HOST=192.168.0.61
+VITE_API_PORT=8000
+VITE_USE_SSL=true
+
+# UI
+VITE_THEME=auto
+VITE_LANGUAGE=ru
+
+# Граф аудио
+VITE_AUDIO_CHART_UPDATE_INTERVAL=100
+VITE_AUDIO_CHART_MAX_POINTS=100
+
+# Уведомления
+VITE_NOTIFICATION_AUTO_HIDE_DELAY=5000
+VITE_MAX_NOTIFICATIONS=10
+
+# Данные
+VITE_DETECTIONS_REFRESH_INTERVAL=1000
+VITE_MAX_DETECTIONS_DISPLAY=50
+
+# WebSocket
+VITE_WS_RECONNECT_DELAY=3000
+VITE_WS_MAX_RECONNECT_ATTEMPTS=10
+
+# Отладка
+VITE_DEBUG=false
+VITE_VERBOSE_LOGGING=false
+```
+
+---
+
+## 📡 API: основные эндпоинты
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| `POST` | `/register_device` | Регистрация Raspberry Pi |
+| `POST` | `/detect_sound` | Отправка аудио для детекции |
+| `GET` | `/devices` | Список всех устройств |
+| `DELETE` | `/devices/{id}` | Удаление устройства |
+| `GET` | `/detections/{device_id}` | История детекций |
+| `DELETE` | `/devices/{id}/detections` | Очистка истории |
+| `GET` | `/yamnet_sounds` | Список всех 521 класса YAMNet |
+| `POST` | `/custom_sounds/train` | Обучение нового кастомного звука |
+| `GET` | `/custom_sounds` | Список кастомных звуков |
+| `DELETE` | `/custom_sounds/{id}` | Удаление кастомного звука |
+| `GET` | `/notification_settings/{device_id}` | Настройки уведомлений |
+| `POST` | `/notification_sounds` | Добавить звук в уведомления |
+| `POST` | `/excluded_sounds` | Добавить звук в исключения |
+| `WS` | `/ws` | WebSocket подключение |
+| `GET` | `/health` | Проверка состояния |
+
+### WebSocket события
+
+```jsonc
+// Обнаружен звук
 {
   "type": "sound_detected",
-  "device_id": "9619ab8b-35e6-41f9-b54c-cfa7bfe3c614",
-  "sound_type": "Speech",
-  "confidence": 0.85,
-  "timestamp": "2026-01-25T20:15:30.123456"
+  "device_id": "uuid",
+  "sound_type": "Fire alarm",
+  "confidence": 0.94,
+  "timestamp": "2026-01-01T12:00:00",
+  "should_notify": true
 }
 
 // Устройство зарегистрировано
 {
   "type": "device_registered",
-  "device_id": "9619ab8b-35e6-41f9-b54c-cfa7bfe3c614",
-  "name": "Raspberry Pi Monitor",
-  "status": "online"
+  "device_id": "uuid",
+  "device": { "name": "RPi Kitchen", "status": "online" }
+}
+
+// Обновление уровня звука
+{
+  "type": "audio_level_updated",
+  "device_id": "uuid",
+  "db_level": 45.2
 }
 ```
 
-## 🔧 Конфигурация
+<!-- TODO: Вставить диаграмму WebSocket взаимодействия -->
 
-### Raspberry Pi Client
+---
 
-```python
-# audio_client.py
-API_SERVER_URL = "http://192.168.0.61:8000"
-SAMPLE_RATE = 16000
-CHUNK_DURATION = 3  # секунды
-```
-
-### API Server
-
-```python
-# main.py
-DB_PATH = "sound_sentinel.db"
-MODEL_PATH = "yamnet.h5"
-CONFIDENCE_THRESHOLD = 0.3
-```
-
-## 📈 Мониторинг и отладка
-
-### Логи клиента
+## 🧪 Тестирование подключения
 
 ```bash
-# Уровень детекции
-🎵 [20:15:30] Speech: 85.2%
-🎵 [20:15:33] Keyboard typing: 72.1%
-🎵 [20:15:36] Background noise (ниже порога)
+# Проверить доступность API
+curl -k https://192.168.0.61:8000/health
+
+# Зарегистрировать устройство вручную
+curl -k -X POST https://192.168.0.61:8000/register_device \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Device",
+    "ip_address": "192.168.0.100",
+    "mac_address": "aa:bb:cc:dd:ee:ff",
+    "model": "Raspberry Pi 4",
+    "wifi_signal": 75
+  }'
+
+# Получить список устройств
+curl -k https://192.168.0.61:8000/devices
+
+# Проверить WebSocket (нужен wscat: npm install -g wscat)
+wscat -c wss://192.168.0.61:8000/ws --no-check
 ```
 
-### Логи сервера
+---
 
-```bash
-✅ Устройство зарегистрировано: Raspberry Pi Monitor
-🔄 Устройство обновлено: Raspberry Pi Monitor
-🎵 Детекция: Speech (85.2%) от устройства 9619ab8b...
-```
-
-## 🎯 Особенности реализации
-
-### MFCC извлечение
-
-```python
-def extract_mfcc(audio_data, sample_rate=16000, n_mfcc=13):
-    # Извлечение 13 MFCC коэффициентов
-    mfcc = librosa.feature.mfcc(y=audio_data, sr=sample_rate, n_mfcc=n_mfcc)
-    # Нормализация
-    mfcc = (mfcc - np.mean(mfcc)) / np.std(mfcc)
-    return mfcc.T.tolist()  # Транспонирование для хранения
-```
-
-### Ресемплинг аудио
-
-```python
-def resample_audio(audio_data, original_rate, target_rate=16000):
-    if original_rate != target_rate:
-        # Используем librosa для качественного ресемплинга
-        return librosa.resample(audio_data, orig_sr=original_rate, target_sr=target_rate)
-    return audio_data
-```
-
-### WebSocket broadcast
-
-```python
-async def broadcast_to_websockets(message: dict):
-    if websocket_connections:
-        message_str = json.dumps(message)
-        for websocket in websocket_connections.copy():
-            try:
-                await websocket.send_text(message_str)
-            except:
-                websocket_connections.discard(websocket)
-```
-
-## 🔒 Безопасность
-
-- **CORS** настроен для локальной сети
-- **Валидация** входных данных
-- **SQL Injection** защита через параметры
-- **Rate limiting** для API эндпоинтов
-
-## 🚨 Устранение неполадок
+## 🛠️ Устранение неполадок
 
 ### Проблемы с аудио на Raspberry Pi
 
 ```bash
-# Остановка конфликтующих процессов
-sudo systemctl stop pulseaudio
-sudo pkill -f pulseaudio
+# Перезапустить ALSA
 sudo alsa force-reload
 
-# Проверка устройств
+# Остановить PulseAudio (если мешает)
+systemctl --user stop pulseaudio
+systemctl --user disable pulseaudio
+
+# Проверить аудиоустройства
 arecord -l
-python3 -c "import pyaudio; p=pyaudio.PyAudio(); [print(f'[{i}] {p.get_device_info_by_index(i)[\"name\"]}') for i in range(p.get_device_count()) if p.get_device_info_by_index(i)['maxInputChannels']>0]"
+
+# Тест записи
+arecord -D hw:1,0 -f S16_LE -r 16000 -d 3 test.wav
 ```
 
-### Проблемы с сетью
+### Проблема: "SSL certificate error" в браузере
+
+1. Перейдите в браузере на `https://192.168.0.61:8000`
+2. Нажмите "Дополнительно" → "Перейти на сайт"
+3. Вернитесь на `https://192.168.0.61:3000`
+
+### Проблема: YAMNet не загружается
 
 ```bash
-# Проверка подключения
-ping 192.168.0.61
-curl -X POST http://192.168.0.61:8000/health
+# Очистить кэш TensorFlow Hub
+rm -rf /tmp/tfhub_modules
+rm -rf ~/.cache/tfhub_modules
 
-# Проверка WebSocket
-wscat -c ws://192.168.0.61:8000/ws
+# Проверить интернет-доступ до tfhub.dev
+curl -I https://tfhub.dev/google/yamnet/1
 ```
 
-## 📝 Лицензия
+### Проблема: WebSocket не подключается
 
-MIT License - свободное использование и модификация
+- Убедитесь, что URL в `client.ts` содержит правильный IP
+- Проверьте, что порт 8000 открыт в файерволе: `sudo ufw allow 8000`
+- Для wss:// нужен SSL-сертификат на сервере
 
 ---
 
-**Sound Sentinel** - превращаем любой Raspberry Pi в умную систему мониторинга звуков! 🎙️🔊
+## 📁 Структура проекта
+
+```
+sound-sentinel/
+├── README.md
+├── docker-compose.yml
+├── mvp_sound_sentinel/
+│   ├── backend/
+│   │   ├── main.py                  # FastAPI приложение
+│   │   ├── requirements.txt
+│   │   ├── Dockerfile
+│   │   ├── .env
+│   │   ├── certs/                   # SSL сертификаты
+│   │   ├── data/                    # SQLite БД
+│   │   ├── cache/yamnet/            # Кэш модели
+│   │   ├── database/
+│   │   │   └── init_db.py           # Инициализация БД
+│   │   └── utils/
+│   │       ├── yamnet.py            # Загрузка и инференс YAMNet
+│   │       ├── yamnet_cached.py     # YAMNet с кэшированием
+│   │       ├── similarity.py        # Cosine similarity
+│   │       ├── custom_matching.py   # Поиск кастомных звуков
+│   │       └── notifications.py     # Логика уведомлений
+│   ├── frontend/
+│   │   ├── src/
+│   │   │   ├── App.tsx              # Корневой компонент
+│   │   │   ├── api/client.ts        # HTTP/WS клиент
+│   │   │   ├── components/          # UI компоненты
+│   │   │   └── data/
+│   │   │       └── criticalSounds.ts # Списки критических звуков
+│   │   ├── Dockerfile
+│   │   ├── .env
+│   │   └── vite.config.ts
+│   └── raspberry_pi/
+│       ├── audio_client.py          # Клиент захвата аудио
+│       ├── requirements_pi.txt
+│       └── Dockerfile
+└── docs/
+    └── diagrams/                    # Диаграммы архитектуры
+```
+
+---
+
+## 📊 Технические характеристики
+
+| Параметр | Значение |
+|----------|----------|
+| Модель классификации | YAMNet (Google) |
+| Классов звуков | 521 (AudioSet) |
+| Размер модели | ~18 MB |
+| Частота дискретизации | 16 000 Hz |
+| Длительность чанка | 3 секунды |
+| Размерность эмбеддингов | 1024 |
+| Алгоритм поиска custom-звуков | Cosine Similarity + Centroid |
+| Порог схожести по умолчанию | 0.70 |
+| База данных | SQLite |
+| Протокол реального времени | WebSocket |
+
+---
+
+## 📝 Лицензия
+
+MIT License — свободное использование и модификация.

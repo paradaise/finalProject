@@ -1,0 +1,51 @@
+# ─── Backend Dockerfile ────────────────────────────────────────────────────────
+# Образ с TensorFlow (включает всё необходимое для YAMNet)
+FROM tensorflow/tensorflow:2.13.0
+
+WORKDIR /app
+
+# Системные зависимости
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    openssl \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Зависимости Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем исходный код
+COPY . .
+
+# Создаём директории для данных и кэша
+RUN mkdir -p /app/data /app/cache/yamnet /app/certs
+
+# Генерируем самоподписанный сертификат если его нет
+# (в продакшене монтируйте реальные сертификаты через volume)
+RUN if [ ! -f /app/certs/key.pem ]; then \
+    openssl req -x509 -newkey rsa:4096 \
+      -keyout /app/certs/key.pem \
+      -out /app/certs/cert.pem \
+      -days 365 -nodes \
+      -subj "/CN=localhost"; \
+    fi
+
+# Порт API
+EXPOSE 8000
+
+# Переменные окружения по умолчанию
+ENV DB_PATH=/app/data/sound_sentinel.db \
+    YAMNET_CACHE_DIR=/app/cache/yamnet \
+    HOST=0.0.0.0 \
+    PORT=8000 \
+    SSL_KEY=/app/certs/key.pem \
+    SSL_CERT=/app/certs/cert.pem \
+    CONFIDENCE_THRESHOLD=0.3 \
+    CUSTOM_MATCH_DEFAULT_THRESHOLD=0.7
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -kf https://localhost:8000/health || exit 1
+
+CMD ["python", "main.py"]
