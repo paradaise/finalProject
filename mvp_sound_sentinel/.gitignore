@@ -65,7 +65,7 @@ Thumbs.db
 *.temp
 check_*.py
 migrate_*.py
-update_*.py
+#update_*.py
 reset_*.py
 
 
