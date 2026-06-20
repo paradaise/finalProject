@@ -25,6 +25,10 @@ venv/
 env/
 ENV/
 
+#req
+
+mvp_sound_sentinel/backend/requirements.txt
+
 # Database
 *.db
 *.sqlite
