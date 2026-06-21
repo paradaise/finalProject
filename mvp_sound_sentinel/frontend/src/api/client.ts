@@ -1,6 +1,5 @@
-// Для локальной сети с HTTPS - заменить на IP твоего ПК
-// Узнать свой IP: ipconfig (Windows) или ifconfig (Mac/Linux)
-const API_BASE_URL = "https://192.168.0.61:8000"; // Замени на свой IP
+
+const API_BASE_URL = "https://192.168.0.86:8000";
 
 export interface Device {
   id: string;

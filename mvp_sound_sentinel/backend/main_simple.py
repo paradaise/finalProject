@@ -165,7 +165,7 @@ async def log_requests(request: Request, call_next):
 
     # Skip logging for localhost and frequent frontend polling
     if client_ip in ["127.0.0.1", "::1"] or (
-        client_ip == "192.168.0.61" and request.url.path == "/devices"
+        client_ip == "192.168.0.86" and request.url.path == "/devices"
     ):
         return response
 
