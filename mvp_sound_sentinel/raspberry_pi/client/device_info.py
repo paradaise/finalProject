@@ -127,7 +127,26 @@ def get_wifi_signal() -> int:
     try:
         import subprocess
 
-        # Prefer nmcli
+        # Use nmcli to get signal for active connection only
+        result = subprocess.run(
+            ["nmcli", "-t", "-f", "ACTIVE,SIGNAL", "dev", "wifi", "list"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            lines = result.stdout.split("\n")
+            for line in lines:
+                # Format: "yes:80" for active connection
+                if line.startswith("yes:"):
+                    try:
+                        signal = int(line.split(":")[1])
+                        signal = max(0, min(100, signal))
+                        print(f"  [WiFi] nmcli signal: {signal}%")
+                        return signal
+                    except:
+                        pass
+
+        # Fallback to full nmcli output
         result = subprocess.run(
             ["nmcli", "dev", "wifi"], capture_output=True, text=True
         )
@@ -135,14 +154,17 @@ def get_wifi_signal() -> int:
             lines = result.stdout.split("\n")
             for line in lines:
                 if line.strip().startswith("*"):
-                    parts = line.split()
-                    if len(parts) > 7:
-                        signal_percent = parts[7]
-                        try:
-                            return int(signal_percent)
-                        except:
-                            return 50
-            return 50
+                    # Extract signal using regex - look for percentage pattern
+                    import re
+                    # Match pattern like "71" or "71%" in the line
+                    match = re.search(r'\b(\d{1,3})%\b', line)
+                    if match:
+                        signal = int(match.group(1))
+                        # Clamp to 0-100
+                        signal = max(0, min(100, signal))
+                        print(f"  [WiFi] nmcli signal: {signal}%")
+                        return signal
+            print(f"  [WiFi] nmcli no active connection found")
 
         # Fallback to iwconfig
         try:
@@ -160,12 +182,17 @@ def get_wifi_signal() -> int:
                                 return 0
                             if dbm >= -50:
                                 return 100
-                            return 2 * (dbm + 100)
-        except:
-            pass
+                            signal = 2 * (dbm + 100)
+                            print(f"  [WiFi] iwconfig signal: {signal}% (dBm: {dbm})")
+                            return signal
+            print(f"  [WiFi] iwconfig no signal found")
+        except Exception as e:
+            print(f"  [WiFi] iwconfig error: {e}")
 
+        print(f"  [WiFi] fallback to 50%")
         return 50
-    except:
+    except Exception as e:
+        print(f"  [WiFi] error: {e}")
         return 50
 
 

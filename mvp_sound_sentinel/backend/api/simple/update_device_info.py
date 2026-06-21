@@ -11,6 +11,7 @@ import sqlite3
 from datetime import datetime
 
 from backend.api.simple import state
+from backend.api.simple.ws import broadcast_to_websockets
 
 router = APIRouter()
 
@@ -131,8 +132,6 @@ async def update_device_info(
         conn.commit()
 
         # Отправляем WebSocket обновление
-        from backend.api.simple.ws import broadcast_to_websockets
-
         payload = device_update.model_dump(exclude_none=True)
         await broadcast_to_websockets(
             {
@@ -145,6 +144,8 @@ async def update_device_info(
         return {"status": "success", "message": "Device info updated successfully"}
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
