@@ -2,13 +2,10 @@ from __future__ import annotations
 
 from typing import List, Tuple, Dict, Any
 import os
-import hashlib
-import requests
 from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_hub as hub
 
 
 class YAMNetCache:
@@ -21,10 +18,6 @@ class YAMNetCache:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # URLs для скачивания
-        self.model_url = "https://tfhub.dev/google/yamnet/1"
-        self.class_map_url = "https://raw.githubusercontent.com/tensorflow/models/master/research/audioset/yamnet/yamnet_class_map.csv"
-
         # Локальные пути
         self.model_path = self.cache_dir / "yamnet_model"
         self.class_map_path = self.cache_dir / "yamnet_class_map.csv"
@@ -32,32 +25,6 @@ class YAMNetCache:
     def is_model_cached(self) -> bool:
         """Проверяет, закэширована ли модель"""
         return self.model_path.exists() and self.class_map_path.exists()
-
-    def download_model(self) -> bool:
-        """Скачивает и кэширует модель"""
-        try:
-            print("📥 Скачивание YAMNet модели...")
-
-            # Скачиваем модель через TensorFlow Hub (автоматически кэшируется)
-            model = hub.load(self.model_url)
-
-            # Сохраняем модель в формате SavedModel
-            tf.saved_model.save(model, str(self.model_path))
-
-            # Скачиваем class map
-            print("📥 Скачивание class map...")
-            response = requests.get(self.class_map_url)
-            response.raise_for_status()
-
-            with open(self.class_map_path, "w", encoding="utf-8") as f:
-                f.write(response.text)
-
-            print("✅ YAMNet модель успешно закэширована")
-            return True
-
-        except Exception as e:
-            print(f"❌ Ошибка скачивания модели: {e}")
-            return False
 
     def load_cached_model(self) -> Tuple[Any, List[str]]:
         """Загружает модель из кэша"""
@@ -84,12 +51,13 @@ class YAMNetCache:
             print(f"❌ Ошибка загрузки из кэша: {e}")
             return None, None
 
-    def get_model(self, force_download: bool = False) -> Tuple[Any, List[str]]:
-        """Получает модель (из кэша или скачивает)"""
-        if force_download or not self.is_model_cached():
-            if not self.download_model():
-                raise RuntimeError("Не удалось скачать YAMNet модель")
-
+    def get_model(self) -> Tuple[Any, List[str]]:
+        """Получает модель из кэша"""
+        if not self.is_model_cached():
+            raise RuntimeError(
+                "YAMNet модель не найдена в кэше. "
+                f"Пожалуйста, поместите модель в: {self.model_path}"
+            )
         return self.load_cached_model()
 
 
@@ -97,16 +65,13 @@ class YAMNetCache:
 _yamnet_cache = YAMNetCache()
 
 
-def load_yamnet_model(force_download: bool = False) -> Tuple[Any, List[str]]:
-    """Загрузка YAMNet модели с локальным кэшированием
-
-    Args:
-        force_download: Принудительно скачать модель заново
+def load_yamnet_model() -> Tuple[Any, List[str]]:
+    """Загрузка YAMNet модели из локального кэша
 
     Returns:
         (model, class_names)
     """
-    return _yamnet_cache.get_model(force_download=force_download)
+    return _yamnet_cache.get_model()
 
 
 def extract_embeddings(audio_data: List[float], model: Any) -> List[float]:
@@ -186,8 +151,6 @@ def get_cache_info() -> Dict[str, Any]:
         "model_cached": _yamnet_cache.is_model_cached(),
         "model_path": str(_yamnet_cache.model_path),
         "class_map_path": str(_yamnet_cache.class_map_path),
-        "model_url": _yamnet_cache.model_url,
-        "class_map_url": _yamnet_cache.class_map_url,
     }
 
 

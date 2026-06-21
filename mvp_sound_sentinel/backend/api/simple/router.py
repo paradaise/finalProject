@@ -3,7 +3,6 @@ from fastapi import APIRouter
 from backend.api.simple.register_device import router as register_device_router
 from backend.api.simple.detect_sound import router as detect_sound_router
 from backend.api.simple.update_device_info import router as update_device_info_router
-from backend.api.simple.update_device import router as update_device_router
 from backend.api.simple.devices import router as devices_router
 from backend.api.simple.custom_sounds_api import router as custom_sounds_router
 from backend.api.simple.notification_settings import (
@@ -34,7 +33,6 @@ router = APIRouter()
 router.include_router(register_device_router)
 router.include_router(detect_sound_router)
 router.include_router(update_device_info_router)
-router.include_router(update_device_router)
 router.include_router(devices_router)
 router.include_router(health_router)
 router.include_router(ws_router)

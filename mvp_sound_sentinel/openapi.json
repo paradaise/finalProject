@@ -14,7 +14,7 @@
       "description": "Development server"
     },
     {
-      "url": "https://192.168.0.86:8000",
+      "url": "https://172.20.10.5:8000",
       "description": "Local network server"
     }
   ],

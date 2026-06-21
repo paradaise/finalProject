@@ -1,5 +1,5 @@
 
-const API_BASE_URL = "https://192.168.0.86:8000";
+const API_BASE_URL = "https://172.20.10.5:8000";
 
 export interface Device {
   id: string;

@@ -17,7 +17,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 # Server
-SERVER_HOST = os.getenv("SERVER_HOST", "192.168.0.86")
+SERVER_HOST = os.getenv("SERVER_HOST", "172.20.10.5")
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
 USE_SSL = _env_bool("USE_SSL", True)
 

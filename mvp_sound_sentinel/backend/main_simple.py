@@ -1,24 +1,17 @@
-#!/usr/bin/env python3
-"""
-Sound Sentinel MVP - API Server (Simple Version)
-Простой сервер с захардкоденным SSL
-"""
-
 import os
 import sys
 import json
-import uuid
+# import uuid
 import sqlite3
-import asyncio
-import warnings
-from datetime import datetime
+# import asyncio
+# import warnings
+# from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict
 
 # Подавление TensorFlow предупреждений
-import tensorflow as tf
-import tensorflow_hub as hub
-import numpy as np
+# import tensorflow as tf
+# import numpy as np
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -165,7 +158,7 @@ async def log_requests(request: Request, call_next):
 
     # Skip logging for localhost and frequent frontend polling
     if client_ip in ["127.0.0.1", "::1"] or (
-        client_ip == "192.168.0.86" and request.url.path == "/devices"
+        client_ip == "172.20.10.5" and request.url.path == "/devices"
     ):
         return response
 
